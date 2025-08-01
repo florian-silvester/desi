@@ -702,6 +702,7 @@ window.testScrollAnimations = function() {
   initializeScrollAnimations();
 };
 
+
 // Test transform origin effect
 window.testOriginEffect = function(x = 25, y = 75) {
   console.log(`🧪 Testing transform origin effect from ${x}%, ${y}%`);
@@ -757,18 +758,4 @@ window.forceTestScale = function() {
     }
   );
 };
-
-console.log(`
-🧪 Test Commands Available:
-- testTransition() - Test page transition
-- testAnimation() - Test homepage animations  
-- testSliders() - Reinitialize sliders
-- testScrollAnimations() - Test scroll animations
-- testOriginEffect(x, y) - Test transform origin scaling from position
-- forceTestScale() - Force test scale effect on current page
-- Check console for click detection and animation progress logs
-- GSAP slider with transform origin debugging active! 🎯
-`);
-
-
 

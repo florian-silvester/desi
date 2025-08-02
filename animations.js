@@ -14,7 +14,14 @@ console.log('🎨 Animations.js loaded');
    • closeDetailsPanel() - Closes the details panel
    • testDetailsPanelAnimations() - Test function (run in console to debug)
    
-📍 Location: Search for "PROJECT HOVER ANIMATIONS" or "DETAILS PANEL ANIMATIONS" sections below
+🎯 QUICK REFERENCE - SLIDER OVERVIEW TOGGLE:
+   • initializeSliderOverviewAnimations() - Main setup function (auto-runs on slider pages)
+   • destroySliderOverviewAnimations() - Cleanup function (auto-runs before page transitions)
+   • activateOverviewMode() - Shows all slides in grid layout
+   • deactivateOverviewMode() - Returns to carousel mode
+   • testSliderOverviewAnimations() - Test function (run in console to debug)
+   
+📍 Location: Search for "PROJECT HOVER ANIMATIONS", "DETAILS PANEL ANIMATIONS", or "SLIDER OVERVIEW TOGGLE" sections below
 */
 
 // Global array to store slider instances
@@ -121,6 +128,7 @@ $(document).ready(function() {
   initializeScrollAnimations();
   initializeProjectHoverAnimations();
   initializeDetailsPanelAnimations();
+  initializeSliderOverviewAnimations();
   }, 100);
   
   // Initialize Barba after a small delay
@@ -292,7 +300,7 @@ function initializeSliders() {
         height: 100% !important;
         transition: none !important;
       }
-      .swiper-slide {
+      .swiper-wrapper:not(.is-overview) .swiper-slide {
         flex-shrink: 0 !important;
         display: block !important;
         width: 100% !important;
@@ -306,7 +314,7 @@ function initializeSliders() {
         display: block;
       }
       @media (min-width: 992px) {
-        .swiper-slide {
+        .swiper-wrapper:not(.is-overview) .swiper-slide {
           width: 50% !important;
         }
       }
@@ -529,116 +537,6 @@ function initializeBarba() {
     sync: true, // ADD BACK - needed for crossfade to work
     
     transitions: [
-      /* COMMENTED OUT - ORIGINAL TRANSITION
-      {
-        name: 'modal-style-transition',
-        leave(data) {
-          console.log('🚪 Leaving page:', data.current.url.path);
-          
-          // Store current scroll position
-          scrollPositions[data.current.url.path] = window.scrollY;
-          console.log(`📍 Stored scroll position: ${window.scrollY} for ${data.current.url.path}`);
-          
-          // Destroy sliders before leaving
-          destroySliders();
-          
-          // Check if the page we are LEAVING is a slider page for the modal effect
-          const isLeavingSliderPage = data.current.container.querySelector('.swiper');
-
-          if (isLeavingSliderPage) {
-            console.log('🎬 Starting modal-style leave animation (scale down)');
-            return gsap.to(data.current.container, {
-              opacity: 0,
-              scale: 0.95, // MUCH MORE SUBTLE - was 0.7
-              duration: 0.4, // Shorter
-              ease: "power2.in",
-              transformOrigin: '50% 50%'
-            });
-          } else {
-            // OVERVIEW PAGE STAYS COMPLETELY UNCHANGED - NO SCALING, NO FADING
-            console.log('🎬 Overview page staying exactly as is - true modal behavior');
-            // Return a dummy animation that does nothing
-            return gsap.set(data.current.container, {});
-          }
-        },
-        
-        enter(data) {
-          console.log('🎯 Entering page:', data.next.url.path);
-          
-          // Check if this is a slider page (has .swiper elements)
-          const isSliderPage = data.next.container.querySelector('.swiper');
-          
-          if (isSliderPage) {
-            console.log('🎠 Detected slider page - using modal scale-up transition');
-            
-            // FIX FLICKER: Initialize sliders *before* the animation
-            initializeSliders();
-
-            // KEEP THE SCALE-UP EFFECT - this looks great!
-            return gsap.fromTo(data.next.container,
-              { opacity: 0, scale: 0.95, transformOrigin: '50% 50%' },
-              {
-                opacity: 1,
-                scale: 1,
-                duration: 0.5,
-                ease: "power2.out",
-                delay: 0,
-                onComplete: function() {
-                  console.log(`🎬 Modal scale-up complete`);
-                  
-                  // Animate the individual slides now that the page is visible
-                  const slides = data.next.container.querySelectorAll('.swiper-slide');
-                  gsap.fromTo(slides,
-                    { opacity: 0, scale: 0.8 },
-                    {
-                      opacity: 1,
-                      scale: 1,
-                      duration: 0.4,
-                      stagger: 0.15,
-                      delay: 0,
-                      ease: "power2.out"
-                    }
-                  );
-                }
-              }
-            );
-            
-          } else {
-            // OVERVIEW PAGE - Animate child element to avoid Barba conflicts
-            console.log('🏠 Overview page - animating child element');
-            
-            const childElement = data.next.container.children[0];
-            if (childElement) {
-              return gsap.fromTo(childElement,
-                { opacity: 0 },
-                { 
-                  opacity: 1, 
-                  duration: 0.3,
-                  delay: 0.1,
-                  ease: "power2.out"
-                }
-              );
-            } else {
-              return Promise.resolve();
-            }
-          }
-        },
-        
-        after(data) {
-          console.log('🔄 After transition complete');
-          
-          // Restore scroll position if we have one stored
-          const storedPosition = scrollPositions[data.next.url.path];
-          if (storedPosition !== undefined) {
-            console.log(`📍 Restoring scroll position: ${storedPosition} for ${data.next.url.path}`);
-            window.scrollTo(0, storedPosition);
-          } else {
-            console.log('📍 No stored position, staying at top');
-          }
-        }
-      */
-      
-      // TEST: SIMPLE SOFT CROSSFADE - FIXED
       {
         name: 'soft-crossfade',
         leave(data) {
@@ -658,6 +556,9 @@ function initializeBarba() {
           
           // Destroy details panel animations
           destroyDetailsPanelAnimations();
+          
+          // Destroy slider overview animations
+          destroySliderOverviewAnimations();
 
           // Simple fade out - NO DELAY
           return gsap.to(data.current.container, {
@@ -689,6 +590,9 @@ function initializeBarba() {
           // Initialize details panel animations for new page
           initializeDetailsPanelAnimations();
           
+          // Initialize slider overview animations for new page
+          initializeSliderOverviewAnimations();
+
           // Simple fade in - NO DELAY
           return gsap.fromTo(data.next.container,
             { opacity: 0 },
@@ -875,6 +779,14 @@ window.testDetailsPanelAnimations = function() {
   initializeDetailsPanelAnimations();
   console.log('✅ [TEST] Test complete - check above logs for detailed setup process');
   console.log('💡 [TEST] If on a detail page, click the "Details" trigger to test opening/closing');
+};
+
+window.testSliderOverviewAnimations = function() {
+  console.log('🧪 [TEST] ==================== TESTING SLIDER OVERVIEW ANIMATIONS ====================');
+  console.log('🔧 [TEST] Manually triggering slider overview animation initialization...');
+  initializeSliderOverviewAnimations();
+  console.log('✅ [TEST] Test complete - check above logs for detailed setup process');
+  console.log('💡 [TEST] If on a detail page with slider, click the "Overview" button to test toggle');
 };
 
 // DEBUG: Summary function to explain the hover system
@@ -1211,5 +1123,250 @@ function closeDetailsPanel() {
   });
   
   console.log('🏁 [DETAILS CLOSE] Close animation timeline launched!');
+}
+
+
+// ===== SLIDER OVERVIEW TOGGLE =====
+// This section handles toggling between slider mode and overview (grid) mode
+// on project detail pages with GSAP sliders
+
+/**
+ * SLIDER OVERVIEW STATE TRACKING
+ * Keeps track of whether the slider is in overview mode or slider mode
+ */
+let sliderOverviewState = {
+  isOverviewMode: false,
+  isAnimating: false
+};
+
+/**
+ * CLEANUP FUNCTION FOR SLIDER OVERVIEW
+ * Removes all event listeners and resets state
+ * Called before page transitions and when reinitializing
+ */
+function destroySliderOverviewAnimations() {
+  console.log('🧹 [OVERVIEW CLEANUP] Removing slider overview event listeners...');
+  
+  // Remove click event listeners
+  $(document).off('click.sliderOverview', '#Overview');
+  
+  // Reset state
+  sliderOverviewState.isOverviewMode = false;
+  sliderOverviewState.isAnimating = false;
+  
+  console.log('✅ [OVERVIEW CLEANUP] Slider overview animations cleaned up successfully');
+}
+
+/**
+ * MAIN INITIALIZATION FUNCTION FOR SLIDER OVERVIEW
+ * Sets up the toggle between slider mode and overview (grid) mode
+ * - Click "Overview" to show all slides at once
+ * - Click again to return to slider mode
+ */
+function initializeSliderOverviewAnimations() {
+  console.log('🎯 [OVERVIEW INIT] Starting slider overview toggle setup...');
+  
+  // STEP 1: Clean up any existing listeners first
+  console.log('📋 [OVERVIEW INIT] Step 1: Cleaning up existing listeners...');
+  destroySliderOverviewAnimations();
+  
+  // STEP 2: Check if we're on a page with slider and overview button
+  console.log('🔍 [OVERVIEW INIT] Step 2: Checking for required elements...');
+  const $overviewBtn = $('#Overview');
+  const $swiper = $('.swiper');
+  const $swiperWrapper = $('.swiper-wrapper');
+  const $slides = $('.swiper-slide');
+  
+  if (!$overviewBtn.length || !$swiper.length || !$swiperWrapper.length) {
+    console.log('ℹ️ [OVERVIEW INIT] Not a slider page or missing elements - skipping overview toggle setup');
+    return;
+  }
+  
+  console.log('✅ [OVERVIEW INIT] Found required elements:', {
+    overviewBtn: $overviewBtn.length > 0 ? '✅ Found' : '❌ Missing',
+    swiper: $swiper.length > 0 ? '✅ Found' : '❌ Missing',
+    swiperWrapper: $swiperWrapper.length > 0 ? '✅ Found' : '❌ Missing',
+    slides: $slides.length
+  });
+  
+  // STEP 3: Add CSS for overview mode
+  console.log('🎨 [OVERVIEW INIT] Step 3: Adding overview mode CSS...');
+  const overviewCSS = `
+    <style id="slider-overview-css">
+      /* Hide navigation buttons in overview mode */
+      .swiper.overview-active .slider-prev,
+      .swiper.overview-active .slider-next {
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+      
+      /* Overview button active state */
+      #Overview.active {
+        background-color: rgba(0,0,0,0.1) !important;
+        color: #000 !important;
+      }
+    </style>
+  `;
+  
+  // Remove existing styles and add new ones
+  $('#slider-overview-css').remove();
+  $('head').append(overviewCSS);
+  
+  // STEP 4: Set up click handler for the overview toggle
+  console.log('🎨 [OVERVIEW INIT] Step 4: Setting up overview toggle click handler...');
+  $(document).on('click.sliderOverview', '#Overview', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔥 [OVERVIEW TRIGGER] ==================== OVERVIEW BUTTON CLICKED ====================');
+    
+    // Prevent multiple animations running at once
+    if (sliderOverviewState.isAnimating) {
+      console.log('⏳ [OVERVIEW TRIGGER] Animation already in progress, ignoring click');
+      return;
+    }
+    
+    if (!sliderOverviewState.isOverviewMode) {
+      activateOverviewMode();
+    } else {
+      deactivateOverviewMode();
+    }
+  });
+  
+  console.log('🎉 [OVERVIEW INIT] ===== SLIDER OVERVIEW TOGGLE READY! =====');
+  console.log('📋 [OVERVIEW INIT] Animation Summary:');
+  console.log('   • Click "Overview" to show all slides at once (grid mode)');
+  console.log('   • Click again to return to slider mode');
+  console.log('   • Smooth GSAP transitions between modes');
+  console.log('   • Navigation buttons hide/show automatically');
+}
+
+/**
+ * ACTIVATE OVERVIEW MODE
+ * Transform slider into grid layout showing all slides with smooth animation
+ */
+function activateOverviewMode() {
+  console.log('🌐 [OVERVIEW ON] ==================== ACTIVATING OVERVIEW MODE ====================');
+  
+  // Set state IMMEDIATELY 
+  sliderOverviewState.isAnimating = true;
+  // sliderOverviewState.isOverviewMode = true; // BUG: State updated too early
+  
+  const $overviewBtn = $('#Overview');
+  const $swiper = $('.swiper');
+  const $swiperWrapper = $('.swiper-wrapper');
+  const $slides = $('.swiper-slide');
+  const $navButtons = $('.slider-prev, .slider-next');
+  
+  // Create timeline for smooth transition
+  const activateTimeline = gsap.timeline({
+    onStart: () => {
+      console.log('✨ [OVERVIEW ON] Overview activation started');
+    },
+    onComplete: () => {
+      console.log('✅ [OVERVIEW ON] Overview mode activated - all slides visible');
+      sliderOverviewState.isAnimating = false;
+      sliderOverviewState.isOverviewMode = true; // CORRECT: State updated on completion
+    }
+  });
+  
+  console.log('🎭 [OVERVIEW ON] Step 1: Simple smooth transition to grid...');
+  
+  // ANIMATION SEQUENCE:
+  // 1. Fade out navigation buttons
+  activateTimeline.to($navButtons, {
+    opacity: 0,
+    duration: 0.3,
+    ease: 'power2.out',
+    onComplete: () => console.log('   ✅ [OVERVIEW ON] Navigation buttons faded out')
+  }, 0)
+  
+  // 2. Add classes and animate slides into grid
+  .add(() => {
+    $swiperWrapper.addClass('is-overview');
+    $swiper.addClass('overview-active');
+    $overviewBtn.addClass('active');
+    console.log('   🏷️ [OVERVIEW ON] Classes added: is-overview, overview-active, active');
+  }, 0.2)
+  
+  // 3. Simple fade in of all slides
+  .to($slides, {
+    opacity: 1,
+    duration: 0.4,
+    stagger: 0.05,
+    ease: 'power2.out',
+    onStart: () => console.log('   📋 [OVERVIEW ON] Slides fading into grid layout'),
+    onComplete: () => console.log('   ✅ [OVERVIEW ON] All slides visible in grid')
+  }, 0.3);
+  
+  console.log('🚀 [OVERVIEW ON] Overview activation timeline launched!');
+}
+
+/**
+ * DEACTIVATE OVERVIEW MODE
+ * Return to normal slider layout with smooth animation
+ */
+function deactivateOverviewMode() {
+  console.log('🎠 [OVERVIEW OFF] ==================== DEACTIVATING OVERVIEW MODE ====================');
+  
+  // Set state IMMEDIATELY
+  sliderOverviewState.isAnimating = true;
+  // sliderOverviewState.isOverviewMode = false; // BUG: State updated too early
+  
+  const $overviewBtn = $('#Overview');
+  const $swiper = $('.swiper');
+  const $swiperWrapper = $('.swiper-wrapper');
+  const $slides = $('.swiper-slide');
+  const $navButtons = $('.slider-prev, .slider-next');
+  
+  // Create timeline for smooth transition back
+  const deactivateTimeline = gsap.timeline({
+    onStart: () => {
+      console.log('✨ [OVERVIEW OFF] Overview deactivation started');
+    },
+    onComplete: () => {
+      console.log('✅ [OVERVIEW OFF] Slider mode restored - carousel behavior active');
+      sliderOverviewState.isAnimating = false;
+      sliderOverviewState.isOverviewMode = false; // CORRECT: State updated on completion
+    }
+  });
+  
+  console.log('🎭 [OVERVIEW OFF] Step 1: Simple smooth transition back to slider...');
+  
+  // ANIMATION SEQUENCE:
+  // 1. Fade out slides slightly
+  deactivateTimeline.to($slides, {
+    opacity: 0.8,
+    duration: 0.2,
+    ease: 'power2.out',
+    onComplete: () => console.log('   📐 [OVERVIEW OFF] Slides fading for transition')
+  }, 0)
+  
+  // 2. Remove classes and switch layout
+  .add(() => {
+    $swiperWrapper.removeClass('is-overview');
+    $swiper.removeClass('overview-active');
+    $overviewBtn.removeClass('active');
+    console.log('   🏷️ [OVERVIEW OFF] Classes removed: is-overview, overview-active, active');
+  }, 0.15)
+  
+  // 3. Fade slides back to full opacity
+  .to($slides, {
+    opacity: 1,
+    duration: 0.3,
+    ease: 'power2.out',
+    onStart: () => console.log('   🎠 [OVERVIEW OFF] Slides returning to carousel layout'),
+    onComplete: () => console.log('   ✅ [OVERVIEW OFF] Slides back in carousel mode')
+  }, 0.2)
+  
+  // 4. Fade navigation buttons back in
+  .to($navButtons, {
+    opacity: 1,
+    duration: 0.3,
+    ease: 'power2.out',
+    onComplete: () => console.log('   ✅ [OVERVIEW OFF] Navigation buttons restored')
+  }, 0.4);
+  
+  console.log('🚀 [OVERVIEW OFF] Overview deactivation timeline launched!');
 }
 

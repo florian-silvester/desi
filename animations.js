@@ -1,5 +1,22 @@
 console.log('🎨 Animations.js loaded');
 
+/*
+🎯 QUICK REFERENCE - HOVER ANIMATIONS:
+   • initializeProjectHoverAnimations() - Main setup function (auto-runs on page load)
+   • destroyProjectHoverAnimations() - Cleanup function (auto-runs before page transitions)
+   • testHoverAnimations() - Test function (run in console to debug)
+   • explainHoverSystem() - Complete explanation (run in console for help)
+   
+🎯 QUICK REFERENCE - DETAILS PANEL ANIMATIONS:
+   • initializeDetailsPanelAnimations() - Main setup function (auto-runs on detail pages)
+   • destroyDetailsPanelAnimations() - Cleanup function (auto-runs before page transitions)
+   • openDetailsPanel() - Opens the details panel with stagger
+   • closeDetailsPanel() - Closes the details panel
+   • testDetailsPanelAnimations() - Test function (run in console to debug)
+   
+📍 Location: Search for "PROJECT HOVER ANIMATIONS" or "DETAILS PANEL ANIMATIONS" sections below
+*/
+
 // Global array to store slider instances
 let sliderInstances = [];
 
@@ -102,6 +119,8 @@ $(document).ready(function() {
   setTimeout(() => {
   initializeSliders();
   initializeScrollAnimations();
+  initializeProjectHoverAnimations();
+  initializeDetailsPanelAnimations();
   }, 100);
   
   // Initialize Barba after a small delay
@@ -110,6 +129,135 @@ $(document).ready(function() {
   }, 200);
   
 });
+
+// ===== PROJECT HOVER ANIMATIONS =====
+// This section handles the fade-in/fade-out animations for project overlays
+// when hovering over .project_img_wrap elements
+
+/**
+ * CLEANUP FUNCTION
+ * Removes all hover event listeners to prevent memory leaks
+ * Called before page transitions and when reinitializing
+ */
+function destroyProjectHoverAnimations() {
+  console.log('🧹 [HOVER CLEANUP] Removing all project hover event listeners...');
+  // Remove all hover event listeners
+  $(document).off('mouseenter.projectHover mouseleave.projectHover', '.project_img_wrap');
+  console.log('✅ [HOVER CLEANUP] Project hover animations cleaned up successfully');
+}
+
+/**
+ * MAIN INITIALIZATION FUNCTION
+ * Sets up hover animations for all .project_img_wrap elements
+ * Finds sibling .project_img_overlay and .project_thumb_wrap elements
+ * Animates them with staggered fade-in on hover, quick fade-out on mouse leave
+ */
+function initializeProjectHoverAnimations() {
+  console.log('🎯 [HOVER INIT] Starting project hover animations setup...');
+  
+  // STEP 1: Clean up any existing listeners first
+  console.log('📋 [HOVER INIT] Step 1: Cleaning up existing listeners...');
+  destroyProjectHoverAnimations();
+  
+  // STEP 2: Find all project image wrapper elements
+  console.log('🔍 [HOVER INIT] Step 2: Searching for .project_img_wrap elements...');
+  const $projectWraps = $('.project_img_wrap');
+  
+  if ($projectWraps.length > 0) {
+    console.log(`✅ [HOVER INIT] Found ${$projectWraps.length} project image wraps - setting up animations`);
+    
+    // STEP 3: Set up MOUSE ENTER animation (hover start)
+    console.log('🎨 [HOVER INIT] Step 3: Setting up MOUSE ENTER animations...');
+    $(document).on('mouseenter.projectHover', '.project_img_wrap', function() {
+      console.log('🔥 [HOVER START] ==================== MOUSE ENTERED PROJECT ====================');
+      
+      // Find the sibling overlay and thumb wrap elements
+      const $overlay = $(this).siblings('.project_img_overlay');
+      const $thumbWrap = $(this).siblings('.project_thumb_wrap');
+      
+      console.log(`🔍 [HOVER START] Element detection:`, {
+        overlay: $overlay.length > 0 ? '✅ Found' : '❌ Not found',
+        thumbWrap: $thumbWrap.length > 0 ? '✅ Found' : '❌ Not found',
+        overlayCount: $overlay.length,
+        thumbWrapCount: $thumbWrap.length
+      });
+      
+      // Kill any existing animations to prevent conflicts
+      console.log('🛑 [HOVER START] Stopping any existing animations...');
+      gsap.killTweensOf([$overlay, $thumbWrap]);
+      
+      // Create staggered fade-in animation
+      console.log('✨ [HOVER START] Starting staggered fade-in animation...');
+      const timeline = gsap.timeline();
+      
+      // ANIMATION SEQUENCE:
+      // 1. Overlay fades in first (at 0 seconds)
+      timeline.to($overlay, {
+        opacity: 1,
+        duration: 0.3,
+        ease: "power2.out",
+        onStart: () => console.log('   🎭 [HOVER START] Overlay fade-in started'),
+        onComplete: () => console.log('   ✅ [HOVER START] Overlay fade-in complete')
+      }, 0)
+      
+      // 2. Thumb wrap fades in 0.1 seconds later (stagger effect)
+      .to($thumbWrap, {
+        opacity: 1,
+        duration: 0.3,
+        ease: "power2.out",
+        onStart: () => console.log('   🖼️ [HOVER START] Thumb wrap fade-in started (staggered)'),
+        onComplete: () => console.log('   ✅ [HOVER START] Thumb wrap fade-in complete')
+      }, 0.1); // 0.1s stagger delay
+      
+      console.log('🚀 [HOVER START] Staggered animation timeline launched!');
+    });
+    
+    // STEP 4: Set up MOUSE LEAVE animation (hover end)
+    console.log('🎨 [HOVER INIT] Step 4: Setting up MOUSE LEAVE animations...');
+    $(document).on('mouseleave.projectHover', '.project_img_wrap', function() {
+      console.log('💨 [HOVER END] ==================== MOUSE LEFT PROJECT ====================');
+      
+      // Find the sibling overlay and thumb wrap elements
+      const $overlay = $(this).siblings('.project_img_overlay');
+      const $thumbWrap = $(this).siblings('.project_thumb_wrap');
+      
+      console.log(`🔍 [HOVER END] Element detection:`, {
+        overlay: $overlay.length > 0 ? '✅ Found' : '❌ Not found',
+        thumbWrap: $thumbWrap.length > 0 ? '✅ Found' : '❌ Not found'
+      });
+      
+      // Kill any existing animations to prevent conflicts
+      console.log('🛑 [HOVER END] Stopping any existing animations...');
+      gsap.killTweensOf([$overlay, $thumbWrap]);
+      
+      // Quick simultaneous fade-out (no stagger for responsive feel)
+      console.log('⚡ [HOVER END] Starting quick simultaneous fade-out...');
+      gsap.to([$overlay, $thumbWrap], {
+        opacity: 0,
+        duration: 0.2,
+        ease: "power2.out",
+        onStart: () => console.log('   🌫️ [HOVER END] Both elements fading out together'),
+        onComplete: () => console.log('   ✅ [HOVER END] Fade-out complete - elements hidden')
+      });
+      
+      console.log('🏁 [HOVER END] Exit animation launched!');
+    });
+    
+    console.log('🎉 [HOVER INIT] ===== PROJECT HOVER ANIMATIONS READY! =====');
+    console.log('📋 [HOVER INIT] Animation Summary:');
+    console.log('   • Hover IN: Overlay fades in → Thumb wrap fades in (0.1s stagger)');
+    console.log('   • Hover OUT: Both fade out together (quick response)');
+    console.log('   • Duration: 0.3s in, 0.2s out');
+    console.log('   • Easing: power2.out (smooth)');
+    
+  } else {
+    console.log('ℹ️ [HOVER INIT] No .project_img_wrap elements found on this page');
+    console.log('💡 [HOVER INIT] Make sure your Webflow elements have the correct class names:');
+    console.log('   • .project_img_wrap (trigger element)');
+    console.log('   • .project_img_overlay (sibling element)');
+    console.log('   • .project_thumb_wrap (sibling element)');
+  }
+}
 
 // ===== GSAP SLIDER IMPLEMENTATION =====
 function destroySliders() {
@@ -505,6 +653,12 @@ function initializeBarba() {
           // Destroy scroll animations
           destroyScrollAnimations();
           
+          // Destroy hover animations
+          destroyProjectHoverAnimations();
+          
+          // Destroy details panel animations
+          destroyDetailsPanelAnimations();
+
           // Simple fade out - NO DELAY
           return gsap.to(data.current.container, {
             opacity: 0,
@@ -528,6 +682,12 @@ function initializeBarba() {
           
           // Initialize scroll animations for new page
           initializeScrollAnimations();
+          
+          // Initialize hover animations for new page
+          initializeProjectHoverAnimations();
+          
+          // Initialize details panel animations for new page
+          initializeDetailsPanelAnimations();
           
           // Simple fade in - NO DELAY
           return gsap.fromTo(data.next.container,
@@ -702,6 +862,64 @@ window.testScrollAnimations = function() {
   initializeScrollAnimations();
 };
 
+window.testHoverAnimations = function() {
+  console.log('🧪 [TEST] ==================== TESTING HOVER ANIMATIONS ====================');
+  console.log('🔧 [TEST] Manually triggering hover animation initialization...');
+  initializeProjectHoverAnimations();
+  console.log('✅ [TEST] Test complete - check above logs for detailed setup process');
+};
+
+window.testDetailsPanelAnimations = function() {
+  console.log('🧪 [TEST] ==================== TESTING DETAILS PANEL ANIMATIONS ====================');
+  console.log('🔧 [TEST] Manually triggering details panel animation initialization...');
+  initializeDetailsPanelAnimations();
+  console.log('✅ [TEST] Test complete - check above logs for detailed setup process');
+  console.log('💡 [TEST] If on a detail page, click the "Details" trigger to test opening/closing');
+};
+
+// DEBUG: Summary function to explain the hover system
+window.explainHoverSystem = function() {
+  console.log('📚 [EXPLAIN] ==================== HOVER ANIMATION SYSTEM EXPLANATION ====================');
+  console.log('');
+  console.log('🎯 [EXPLAIN] PURPOSE:');
+  console.log('   Creates smooth fade-in/fade-out effects when hovering over project images');
+  console.log('');
+  console.log('🏗️ [EXPLAIN] REQUIRED HTML STRUCTURE:');
+  console.log('   <div class="project_img_wrap">        <!-- TRIGGER: Mouse hover target -->');
+  console.log('     <!-- Your project image content -->');
+  console.log('   </div>');
+  console.log('   <div class="project_img_overlay">     <!-- ANIMATED: Fades in first -->');
+  console.log('     <!-- Overlay content -->');
+  console.log('   </div>');
+  console.log('   <div class="project_thumb_wrap">      <!-- ANIMATED: Fades in second (staggered) -->');
+  console.log('     <!-- Thumbnail content -->');
+  console.log('   </div>');
+  console.log('');
+  console.log('⚡ [EXPLAIN] ANIMATION SEQUENCE:');
+  console.log('   1. Mouse enters .project_img_wrap');
+  console.log('   2. .project_img_overlay fades in (0.3s)');
+  console.log('   3. .project_thumb_wrap fades in (0.3s, starts 0.1s later)');
+  console.log('   4. Mouse leaves .project_img_wrap');
+  console.log('   5. Both elements fade out together (0.2s, quick response)');
+  console.log('');
+  console.log('🎛️ [EXPLAIN] CURRENT SETTINGS:');
+  console.log('   • Fade-in duration: 0.3 seconds');
+  console.log('   • Fade-out duration: 0.2 seconds');
+  console.log('   • Stagger delay: 0.1 seconds');
+  console.log('   • Easing: power2.out (smooth)');
+  console.log('');
+  console.log('🔧 [EXPLAIN] WEBFLOW SETUP REQUIRED:');
+  console.log('   • Set .project_img_overlay initial opacity to 0');
+  console.log('   • Set .project_thumb_wrap initial opacity to 0');
+  console.log('   • Position fixed elements work perfectly with GSAP');
+  console.log('');
+  console.log('🧪 [EXPLAIN] TESTING:');
+  console.log('   • Run testHoverAnimations() to reinitialize');
+  console.log('   • Watch console for detailed hover logs');
+  console.log('   • Look for [HOVER START] and [HOVER END] sections');
+  console.log('==================================================================================');
+};
+
 
 // Test transform origin effect
 window.testOriginEffect = function(x = 25, y = 75) {
@@ -758,4 +976,240 @@ window.forceTestScale = function() {
     }
   );
 };
+
+
+// ===== DETAILS PANEL ANIMATIONS =====
+// This section handles the expandable details panel on project detail pages
+// Triggered by clicking the "Details" nav link with ID "Trigger"
+
+/**
+ * DETAILS PANEL STATE TRACKING
+ * Keeps track of whether the details panel is currently open or closed
+ */
+let detailsPanelState = {
+  isOpen: false,
+  isAnimating: false
+};
+
+/**
+ * CLEANUP FUNCTION FOR DETAILS PANEL
+ * Removes all event listeners and resets state
+ * Called before page transitions and when reinitializing
+ */
+function destroyDetailsPanelAnimations() {
+  console.log('🧹 [DETAILS CLEANUP] Removing details panel event listeners...');
+  
+  // Remove click event listeners
+  $(document).off('click.detailsPanel', '#Trigger');
+  $(document).off('click.detailsPanel');
+  
+  // Reset state
+  detailsPanelState.isOpen = false;
+  detailsPanelState.isAnimating = false;
+  
+  console.log('✅ [DETAILS CLEANUP] Details panel animations cleaned up successfully');
+}
+
+/**
+ * MAIN INITIALIZATION FUNCTION FOR DETAILS PANEL
+ * Sets up the expandable details panel animations
+ * - Click "Details" trigger to open panel from bottom
+ * - Click outside to close panel
+ * - Staggered fade-in of content elements
+ */
+function initializeDetailsPanelAnimations() {
+  console.log('🎯 [DETAILS INIT] Starting details panel animations setup...');
+  
+  // STEP 1: Clean up any existing listeners first
+  console.log('📋 [DETAILS INIT] Step 1: Cleaning up existing listeners...');
+  destroyDetailsPanelAnimations();
+  
+  // STEP 2: Check if we're on a detail page with the required elements
+  console.log('🔍 [DETAILS INIT] Step 2: Checking for required elements...');
+  const $trigger = $('#Trigger');
+  const $detailsWrap = $('.details_wrap');
+  const $detailsLayout = $('.details_layout');
+  const $projectOverlay = $('.project_img_overlay');
+  
+  if (!$trigger.length || !$detailsWrap.length) {
+    console.log('ℹ️ [DETAILS INIT] Not a detail page or missing elements - skipping details panel setup');
+    return;
+  }
+  
+  console.log('✅ [DETAILS INIT] Found required elements:', {
+    trigger: $trigger.length > 0 ? '✅ Found' : '❌ Missing',
+    detailsWrap: $detailsWrap.length > 0 ? '✅ Found' : '❌ Missing',
+    detailsLayout: $detailsLayout.length > 0 ? '✅ Found' : '❌ Missing',
+    projectOverlay: $projectOverlay.length > 0 ? '✅ Found' : '❌ Missing'
+  });
+  
+  // STEP 3: Set initial state (details panel hidden)
+  console.log('🎨 [DETAILS INIT] Step 3: Setting initial state...');
+  gsap.set($detailsWrap, {
+    transformOrigin: 'bottom',
+    scaleY: 0,
+    visibility: 'hidden'
+  });
+  
+  gsap.set([$detailsLayout, $projectOverlay], {
+    opacity: 0
+  });
+  
+  console.log('✅ [DETAILS INIT] Initial state set - panel hidden with scaleY(0)');
+  
+  // STEP 4: Set up click handler for the trigger button
+  console.log('🎨 [DETAILS INIT] Step 4: Setting up trigger click handler...');
+  $(document).on('click.detailsPanel', '#Trigger', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔥 [DETAILS TRIGGER] ==================== DETAILS BUTTON CLICKED ====================');
+    
+    // Prevent multiple animations running at once
+    if (detailsPanelState.isAnimating) {
+      console.log('⏳ [DETAILS TRIGGER] Animation already in progress, ignoring click');
+      return;
+    }
+    
+    if (!detailsPanelState.isOpen) {
+      openDetailsPanel();
+    } else {
+      closeDetailsPanel();
+    }
+  });
+  
+  // STEP 5: Set up click handler for closing when clicking outside
+  console.log('🎨 [DETAILS INIT] Step 5: Setting up outside click handler...');
+  $(document).on('click.detailsPanel', function(e) {
+    // Only close if panel is open and click is outside the details wrap
+    if (detailsPanelState.isOpen && !$(e.target).closest('.details_wrap').length && !$(e.target).is('#Trigger')) {
+      console.log('👆 [DETAILS OUTSIDE] Click detected outside details panel - closing...');
+      closeDetailsPanel();
+    }
+  });
+  
+  console.log('🎉 [DETAILS INIT] ===== DETAILS PANEL ANIMATIONS READY! =====');
+  console.log('📋 [DETAILS INIT] Animation Summary:');
+  console.log('   • Click "Details" trigger to open panel from bottom (scaleY 0 → 1)');
+  console.log('   • Content fades in with stagger (layout + overlay)');
+  console.log('   • Click outside to close panel');
+  console.log('   • Uses scaleY animation (works with absolute positioning)');
+}
+
+/**
+ * OPEN DETAILS PANEL ANIMATION
+ * Expands the details panel from bottom and fades in content with stagger
+ */
+function openDetailsPanel() {
+  console.log('🚀 [DETAILS OPEN] ==================== OPENING DETAILS PANEL ====================');
+  
+  // Set state
+  detailsPanelState.isAnimating = true;
+  
+  const $detailsWrap = $('.details_wrap');
+  const $detailsLayout = $('.details_layout');
+  const $projectOverlay = $('.project_img_overlay');
+  
+  // Create timeline for staggered animation
+  const openTimeline = gsap.timeline({
+    onStart: () => {
+      console.log('✨ [DETAILS OPEN] Open animation started');
+    },
+    onComplete: () => {
+      console.log('✅ [DETAILS OPEN] Open animation complete - panel fully opened');
+      detailsPanelState.isOpen = true;
+      detailsPanelState.isAnimating = false;
+    }
+  });
+  
+  console.log('📏 [DETAILS OPEN] Step 1: Expanding panel from bottom using scaleY...');
+  
+  // ANIMATION SEQUENCE:
+  // 1. Scale the details wrap from scaleY(0) to scaleY(1) - grows from bottom
+  openTimeline.set($detailsWrap, {
+    visibility: 'visible'
+  })
+  .to($detailsWrap, {
+    scaleY: 1,
+    duration: 0.6,
+    ease: 'power2.out',
+    onStart: () => console.log('   📐 [DETAILS OPEN] ScaleY expansion started'),
+    onComplete: () => console.log('   ✅ [DETAILS OPEN] ScaleY expansion complete')
+  }, 0)
+  
+  // 2. Fade in the details layout (starts 0.2s after height animation begins)
+  .to($detailsLayout, {
+    opacity: 1,
+    duration: 0.4,
+    ease: 'power2.out',
+    onStart: () => console.log('   🎭 [DETAILS OPEN] Layout fade-in started'),
+    onComplete: () => console.log('   ✅ [DETAILS OPEN] Layout fade-in complete')
+  }, 0.2)
+  
+  // 3. Fade in the project overlay (starts 0.1s after layout fade begins - stagger effect)
+  .to($projectOverlay, {
+    opacity: 1,
+    duration: 0.4,
+    ease: 'power2.out',
+    onStart: () => console.log('   🌫️ [DETAILS OPEN] Overlay fade-in started (staggered)'),
+    onComplete: () => console.log('   ✅ [DETAILS OPEN] Overlay fade-in complete')
+  }, 0.3);
+  
+  console.log('🎬 [DETAILS OPEN] Staggered open animation timeline launched!');
+}
+
+/**
+ * CLOSE DETAILS PANEL ANIMATION
+ * Fades out content and collapses the panel to height 0
+ */
+function closeDetailsPanel() {
+  console.log('💨 [DETAILS CLOSE] ==================== CLOSING DETAILS PANEL ====================');
+  
+  // Set state
+  detailsPanelState.isAnimating = true;
+  
+  const $detailsWrap = $('.details_wrap');
+  const $detailsLayout = $('.details_layout');
+  const $projectOverlay = $('.project_img_overlay');
+  
+  // Create timeline for close animation (reverse order)
+  const closeTimeline = gsap.timeline({
+    onStart: () => {
+      console.log('✨ [DETAILS CLOSE] Close animation started');
+    },
+    onComplete: () => {
+      console.log('✅ [DETAILS CLOSE] Close animation complete - panel fully closed');
+      detailsPanelState.isOpen = false;
+      detailsPanelState.isAnimating = false;
+    }
+  });
+  
+  console.log('🌫️ [DETAILS CLOSE] Step 1: Fading out content simultaneously...');
+  
+  // CLOSE ANIMATION SEQUENCE:
+  // 1. Fade out both layout and overlay simultaneously (quick)
+  closeTimeline.to([$detailsLayout, $projectOverlay], {
+    opacity: 0,
+    duration: 0.3,
+    ease: 'power2.out',
+    onStart: () => console.log('   🌪️ [DETAILS CLOSE] Content fade-out started'),
+    onComplete: () => console.log('   ✅ [DETAILS CLOSE] Content fade-out complete')
+  }, 0)
+  
+  // 2. Scale down to 0 (starts shortly after fade-out begins)
+  .to($detailsWrap, {
+    scaleY: 0,
+    duration: 0.4,
+    ease: 'power2.in',
+    onStart: () => console.log('   📐 [DETAILS CLOSE] ScaleY collapse started'),
+    onComplete: () => console.log('   ✅ [DETAILS CLOSE] ScaleY collapse complete')
+  }, 0.1)
+  
+  // 3. Hide completely when animation is done
+  .set($detailsWrap, {
+    visibility: 'hidden'
+  });
+  
+  console.log('🏁 [DETAILS CLOSE] Close animation timeline launched!');
+}
 

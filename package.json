@@ -4,7 +4,10 @@
   "description": "Development environment for Ilke's Webflow animations",
   "scripts": {
     "dev": "live-server --port=3000 --open=index.html --cors",
-    "start": "npm run dev"
+    "start": "npm run dev",
+    "webflow:preview": "node webflow-fix-location-field.js",
+    "webflow:apply": "node webflow-fix-location-field.js --apply",
+    "webflow:inspect": "node webflow-inspect-cms.js"
   },
   "devDependencies": {
     "live-server": "^1.2.2"

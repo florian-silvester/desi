@@ -2031,6 +2031,7 @@ let lastScrollY = 0;
 let svgsVisible = true;
 let svgScrollHandler = null; // Store reference for cleanup
 let svgScrollInitialized = false; // Prevent multiple initialization
+let scrollTimeout = null; // For detecting when scrolling stops
 
 function initializeSVGScrollAnimations() {
   // CRITICAL: Don't initialize if already running
@@ -2051,9 +2052,15 @@ function initializeSVGScrollAnimations() {
   svgScrollHandler = function handleSVGScroll() {
     const currentScrollY = window.scrollY;
     const scrollDirection = currentScrollY > lastScrollY ? 'down' : 'up';
+    const isAtTop = currentScrollY <= 50;
     
-    // Only animate if scroll direction changed and we're past initial position
-    if (currentScrollY > 50) { // Start animations after 50px scroll
+    // Clear existing timeout
+    if (scrollTimeout) {
+      clearTimeout(scrollTimeout);
+    }
+    
+    // Handle immediate scroll actions
+    if (currentScrollY > 50) { // Past initial position
       
       if (scrollDirection === 'down' && svgsVisible) {
         // SCROLL DOWN: Fade out with reverse stagger
@@ -2067,8 +2074,8 @@ function initializeSVGScrollAnimations() {
         svgsVisible = false;
         
       } else if (scrollDirection === 'up' && !svgsVisible) {
-        // SCROLL UP: Fade in with normal stagger
-        console.log('🔼 Scrolling up - fading in SVGs (normal stagger)');
+        // SCROLL UP: Fade in with normal stagger (temporarily)
+        console.log('🔼 Scrolling up - fading in SVGs temporarily (normal stagger)');
         gsap.to(['.studio_svg', '.penzlien_svg'], { // NORMAL ORDER
           opacity: 1,
           y: 0,
@@ -2078,8 +2085,24 @@ function initializeSVGScrollAnimations() {
         });
         svgsVisible = true;
       }
-    } else if (currentScrollY <= 50 && !svgsVisible) {
-      // Back to top - ensure SVGs are visible
+      
+      // Set timeout to fade out when scrolling stops (unless at top)
+      scrollTimeout = setTimeout(() => {
+        if (window.scrollY > 50 && svgsVisible) {
+          console.log('⏸️ Scrolling stopped (not at top) - fading out SVGs');
+          gsap.to(['.penzlien_svg', '.studio_svg'], {
+            opacity: 0,
+            duration: 0.4,
+            stagger: 0.1,
+            ease: "power2.out"
+          });
+          svgsVisible = false;
+        }
+      }, 150); // 150ms delay after scrolling stops
+      
+    } else if (isAtTop && !svgsVisible) {
+      // At top - ensure SVGs are visible and stay visible
+      console.log('🔝 At top of page - showing SVGs permanently');
       gsap.to(['.studio_svg', '.penzlien_svg'], {
         opacity: 1,
         y: 0,
@@ -2104,6 +2127,11 @@ function destroySVGScrollAnimations() {
   if (svgScrollHandler) {
     window.removeEventListener('scroll', svgScrollHandler);
     svgScrollHandler = null;
+  }
+  // Clear any pending timeout
+  if (scrollTimeout) {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = null;
   }
   // Reset all state
   lastScrollY = 0;

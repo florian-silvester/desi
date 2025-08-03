@@ -1,15 +1,10 @@
-<!DOCTYPE html><!--  This site was created in Webflow. https://webflow.com  --><!--  Last Published: Sat Aug 02 2025 11:15:50 GMT+0000 (Coordinated Universal Time)  -->
-<html data-wf-page="688b84e2d55545ae80e8ab52" data-wf-site="688b84e1d55545ae80e8ab02" lang="en">
+<!DOCTYPE html><!--  This site was created in Webflow. https://webflow.com  --><!--  Last Published: Sun Aug 03 2025 11:27:25 GMT+0000 (Coordinated Universal Time)  -->
+<html data-wf-page="688f1c957819f58437b982c0" data-wf-site="688b84e1d55545ae80e8ab02" lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Website Name</title>
-  <meta content="Place website meta description here" name="description">
-  <meta content="Website Name" property="og:title">
-  <meta content="Place website meta description here" property="og:description">
-  <meta content="Website Name" property="twitter:title">
-  <meta content="Place website meta description here" property="twitter:description">
-  <meta property="og:type" content="website">
-  <meta content="summary_large_image" name="twitter:card">
+  <title>Home Grid</title>
+  <meta content="Home Grid" property="og:title">
+  <meta content="Home Grid" property="twitter:title">
   <meta content="width=device-width, initial-scale=1" name="viewport">
   <meta content="Webflow" name="generator">
   <link href="css/normalize.css" rel="stylesheet" type="text/css">
@@ -21,104 +16,93 @@
   <script>
 (function(global){global.pageFunctions=global.pageFunctions||{executed:{},functions:{},addFunction:function(id,fn){if(!this.functions[id])this.functions[id]=fn},executeFunctions:function(){if(this.added)return;this.added=true;for(const id in this.functions){if(!this.executed[id]){try{this.functions[id]();this.executed[id]=true}catch(e){console.error(`Error executing function ${id}:`,e)}}}}}})(window);
 </script>
-  <style>/*
-.mouse_label {
+  <style>
+/**
+================================================================================
+Masonry
+================================================================================
+**/
+/*  ── DESKTOP / TABLET  (what you already had) ───────────────────── */
+.project_masonry_item[item-style="small"]  { width:20vw; }
+.project_masonry_item[item-style="medium"] { width:33vw; }
+.project_masonry_item[item-style="large"]  { width:66vw; grid-column:span 2; }
+.project_masonry_item[item-style="x-large"]{ width:100vw; grid-column:span 2; }
+.project_masonry_item[item-align="left"]   { justify-self:start;  }
+.project_masonry_item[item-align="center"] { justify-self:center; }
+.project_masonry_item[item-align="right"]  { justify-self:end;    }
+/*  ── MOBILE  (≤ 768 px) — bigger widths, every card spans both tracks  */
+@media (max-width:768px){
+  /* single-column flow so big widths don’t overflow */
+  .project_masonry_layout{ grid-template-columns:1fr; gap:6vw; }
+  /* force each item onto that single column */
+  .project_masonry_item{ grid-column:1 / -1; }
+  /* size tweaks */
+  .project_masonry_item[item-style="small"]  { width:60vw; }
+  .project_masonry_item[item-style="medium"] { width:75vw; }
+  .project_masonry_item[item-style="large"]  { width:90vw; }
+  .project_masonry_item[item-style="x-large"]{ width:100vw; }
+}
+</style>
+  <style>
+/**
+================================================================================
+Mobile Adjustments
+================================================================================
++*/
+@media (max-width:768px){
+  /* 1-column stack, but keep each card’s own width & alignment */
+  .project_masonry_layout{ grid-template-columns:1fr; }
+  /* force every card to occupy the single column’s row */
+  .project_masonry_item{ grid-column:1 / -1; }
+}
+</style>
+  <style>
+/**
+================================================================================
+🖱️ Custom Cursor Styles
+================================================================================
+*/
+.projects_mouse_label {
   position: fixed;
   pointer-events: none;
   transform: translate(-50%, -50%);
   z-index: 9000;
 }
-.project_link{
-	cursor: none!important;
+
+/* Hide default cursor globally */
+*, *::before, *::after { 
+  cursor: none !important; 
 }
-*{
-	cursor: none!important;
-}
-*, *::before, *::after { cursor: none !important; }
-/* Hide the custom cursor on devices that don't support hover (typically touch devices) *
+
+/* Hide the custom cursor on devices that don't support hover (typically touch devices) */
 @media (hover: none), (pointer: coarse) {
   .projects_mouse_label {
     display: none;
   }
+  
+  /* Re-enable default cursor on touch devices */
+  *, *::before, *::after { 
+    cursor: auto !important; 
+  }
 }
 </style>
-  <style>
-/* ─── LEFT-ALIGNED CARDS ────────────────────────────────────────── */
-.project_img_wrap[item-style="x-large"][item-align="left"]{
-  --w:75vw;
-  width:var(--w);
-  margin-left:0;
-  margin-right:calc(100vw - var(--w));
-}
-.project_img_wrap[item-style="large"][item-align="left"]{
-  --w:55vw;
-  width:var(--w);
-  margin-left:0;
-  margin-right:calc(100vw - var(--w));
-}
-.project_img_wrap[item-style="medium"][item-align="left"]{
-  --w:33vw;
-  width:var(--w);
-  margin-left:0;
-  margin-right:calc(100vw - var(--w));
-}
-.project_img_wrap[item-style="small"][item-align="left"]{
-  --w:20vw;
-  width:var(--w);
-  margin-left:0;
-  margin-right:calc(100vw - var(--w));
-}
-/* ─── CENTRE-ALIGNED CARDS ─────────────────────────────────────── */
-.project_img_wrap[item-style="x-large"][item-align="center"]{
-  --w:75vw;
-  width:var(--w);
-  margin-left:calc((100vw - var(--w))/2);
-  margin-right:calc((100vw - var(--w))/2);
-}
-.project_img_wrap[item-style="large"][item-align="center"]{
-  --w:55vw;
-  width:var(--w);
-  margin-left:calc((100vw - var(--w))/2);
-  margin-right:calc((100vw - var(--w))/2);
-}
-.project_img_wrap[item-style="medium"][item-align="center"]{
-  --w:33vw;
-  width:var(--w);
-  margin-left:calc((100vw - var(--w))/2);
-  margin-right:calc((100vw - var(--w))/2);
-}
-.project_img_wrap[item-style="small"][item-align="center"]{
-  --w:20vw;
-  width:var(--w);
-  margin-left:calc((100vw - var(--w))/2);
-  margin-right:calc((100vw - var(--w))/2);
-}
-/* ─── RIGHT-ALIGNED CARDS ──────────────────────────────────────── */
-.project_img_wrap[item-style="x-large"][item-align="right"]{
-  --w:75vw;
-  width:var(--w);
-  margin-left:calc(100vw - var(--w));
-  margin-right:0;
-}
-.project_img_wrap[item-style="large"][item-align="right"]{
-  --w:55vw;
-  width:var(--w);
-  margin-left:calc(100vw - var(--w));
-  margin-right:0;
-}
-.project_img_wrap[item-style="medium"][item-align="right"]{
-  --w:33vw;
-  width:var(--w);
-  margin-left:calc(100vw - var(--w));
-  margin-right:0;
-}
-.project_img_wrap[item-style="small"][item-align="right"]{
-  --w:20vw;
-  width:var(--w);
-  margin-left:calc(100vw - var(--w));
-  margin-right:0;
-}
-</style>
+  <script>
+/**
+================================================================================
+Randomizetr for vertical offset
+================================================================================
++*/
+document.addEventListener('DOMContentLoaded', () => {
+  const gaps = ['0', '5vw', '15vw', '25vw'];          
+  document.querySelectorAll(
+    '.project_masonry_item[item-style="small"],' +
+    '.project_masonry_item[item-style="medium"]'
+  ).forEach(item => {
+    const gap = gaps[Math.floor(Math.random() * gaps.length)];
+    item.style.marginTop = gap;                        // random vertical offset
+  });
+});
+</script>
 </head>
 <body data-barba="wrapper">
   <div data-collapse="medium" data-animation="default" data-duration="400" data-w-id="db79e21e-542d-0216-3ada-69e7035089ab" data-easing="ease" data-easing2="ease" role="banner" class="navbar14_component w-nav">
@@ -147,38 +131,6 @@
     </div>
   </div>
   <div data-barba="container" class="page_wrap">
-    <section class="hero_wrap">
-      <div class="hero_contain u-container">
-        <div class="hero_layout u-flex-vertical-nowrap"><img src="images/uAP-liAA.jpeg" loading="lazy" alt="" sizes="(max-width: 1920px) 100vw, 1920px" srcset="images/uAP-liAA.jpeg 500w, images/uAP-liAA.jpeg 800w, images/uAP-liAA.jpeg 1080w, images/uAP-liAA.jpeg 1600w, images/uAP-liAA.jpeg 1801w" class="u-background-skeleton"></div>
-      </div>
-    </section>
-    <section data-theme="inherit" class="intro_wrap">
-      <div data-padding-bottom="small" data-padding-top="small" class="intro_container u-container">
-        <div class="intro_layout u-flex-horizontal-nowrap u-alignment-center">
-          <div class="intro_logo_wrap u-vflex-center-center"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewbox="0 0 1778 307" fill="none" class="studio_svg u-mb-4">
-              <path d="M598.181 139.23L545.646 139.23V295.973L541.268 300.352H501.867L497.489 295.973L497.489 139.23H448.895L444.517 135.29V100.701L448.895 96.3227H497.489V14.3025L501.867 9.92416L541.268 9.92416L545.646 14.3025V96.3227H598.181L602.559 100.701V135.29L598.181 139.23Z" fill="currentColor"></path>
-              <path d="M746.097 263.574C759.231 263.574 769.3 259.633 775.867 253.504C785.936 243.872 788.563 228.11 788.563 211.472V100.701L792.941 96.3227H833.217L837.595 100.701V213.223C837.595 254.817 827.526 274.52 809.139 288.53C793.378 300.352 771.489 306.481 746.097 306.481C720.705 306.481 698.816 300.352 683.055 288.53C664.668 274.52 654.599 254.817 654.599 213.223V100.701L658.977 96.3227H699.254L703.631 100.701V211.472C703.631 228.11 706.258 243.872 716.327 253.504C722.894 259.633 732.963 263.574 746.097 263.574Z" fill="currentColor"></path>
-              <path d="M1061.19 295.973V285.465H1060.75C1048.06 297.287 1026.61 306.481 1001.21 306.481C946.053 306.481 896.145 262.26 896.145 198.337C896.145 134.414 946.053 90.1931 1001.21 90.1931C1026.61 90.1931 1048.06 99.3875 1059.88 110.333H1060.75C1059.88 88.4417 1059.88 70.4907 1059.88 57.7936V14.3025L1064.26 9.92416L1103.22 9.92416L1107.6 14.3025V295.973L1103.22 300.352H1065.57L1061.19 295.973ZM942.989 198.775C942.989 234.677 970.131 263.136 1007.34 263.136C1029.67 263.136 1048.06 253.504 1059.88 237.304V160.246C1048.06 144.046 1029.67 134.414 1007.34 134.414C970.131 134.414 942.989 162.873 942.989 198.775Z" fill="currentColor"></path>
-              <path d="M1185.61 30.6481C1185.61 13.5728 1199.18 0 1216.25 0C1233.32 0 1246.9 13.5728 1246.9 30.6481C1246.9 47.7235 1233.32 61.2963 1216.25 61.2963C1199.18 61.2963 1185.61 47.7235 1185.61 30.6481ZM1191.73 100.701L1196.11 96.3227L1236.39 96.3227L1240.77 100.701V295.973L1236.39 300.352H1196.11L1191.73 295.973V100.701Z" fill="currentColor"></path>
-              <path d="M1420.88 90.1931C1481.73 90.1931 1532.08 134.852 1532.08 198.775C1532.08 262.698 1481.3 306.481 1420.88 306.481C1360.03 306.481 1309.68 263.136 1309.68 198.775C1309.68 134.414 1359.59 90.1931 1420.88 90.1931ZM1356.53 198.775C1356.53 234.677 1383.67 263.136 1420.88 263.136C1458.09 263.136 1485.24 234.677 1485.24 198.775C1485.24 162.873 1458.09 134.414 1420.88 134.414C1383.67 134.414 1356.53 162.873 1356.53 198.775Z" fill="currentColor"></path>
-              <path d="M245 258.871L246.333 254.872L277.431 234.878L281.873 235.323C289.87 250.873 303.198 264.202 326.299 264.202C345.847 264.202 359.174 255.316 359.174 238.433C359.174 224.215 344.07 217.551 326.744 211.775L308.973 205.999C281.873 197.113 256.551 182.895 256.551 147.796C256.551 108.697 288.537 85.5938 329.853 85.5937C364.506 85.5937 388.051 100.256 400.491 119.805L399.602 123.804L370.725 144.241H366.283C359.619 134.467 346.735 125.136 328.965 125.136C311.639 125.136 303.198 133.578 303.198 142.908C303.198 155.349 312.527 159.792 334.74 167.789L348.512 172.676C364.95 178.452 383.164 184.673 395.159 197.557C403.6 206.443 409.376 218.884 409.376 235.323C409.376 277.531 372.946 305.078 326.744 305.078C288.537 305.078 258.772 287.306 245 258.871Z" fill="currentColor"></path>
-            </svg><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewbox="0 0 1776 387" fill="none" class="penzlien_svg">
-              <path d="M46.4057 101.221V111.728H46.8435C59.5394 99.9071 80.9912 90.7126 106.383 90.7126C161.545 90.7126 211.453 134.933 211.453 198.857C211.453 262.78 161.545 307.001 106.383 307.001C80.9912 307.001 59.5395 297.806 47.7192 286.861H46.8435C47.7191 308.752 47.7192 325.703 47.7192 338.4L47.7192 382.621L43.3412 386.999H4.37794L0 382.621L0 101.221L4.37794 96.8422H42.0279L46.4057 101.221ZM100.254 263.656C137.466 263.656 164.609 235.197 164.609 199.295C164.609 163.392 137.466 134.933 100.254 134.933C77.9267 134.933 59.5395 144.566 47.7192 160.765L47.7192 237.823C59.5395 254.023 77.9267 263.656 100.254 263.656Z" fill="currentColor"></path>
-              <path d="M370.816 307.001C310.401 307.001 261.369 263.218 261.369 198.857C261.369 134.933 311.277 90.7126 370.816 90.7126C434.296 90.7126 477.199 134.496 477.199 199.732V206.3L472.821 210.678L307.337 210.678C310.401 241.326 336.231 263.656 371.254 263.656C397.084 263.656 417.66 251.834 428.605 235.634L432.983 234.759L466.692 255.337V259.715C447.43 289.05 411.093 307.001 370.816 307.001ZM370.378 129.242C337.544 129.242 315.217 147.631 309.526 172.587L429.042 172.587C424.227 146.317 401.462 129.242 370.378 129.242Z" fill="currentColor"></path>
-              <path d="M589.579 296.493L585.201 300.871H545.362L540.984 296.493V101.221L545.362 96.8422H583.888L588.266 101.221V114.793H589.141C598.772 101.658 621.1 90.7126 649.118 90.7126C674.51 90.7126 694.649 98.5935 707.345 113.48C719.603 127.49 725.732 148.506 725.732 176.089V296.493L721.354 300.871L681.077 300.871L676.699 296.493V185.284C676.699 168.646 673.635 155.511 666.192 146.755C659.187 138.874 649.118 134.058 633.796 134.058C607.09 134.058 592.643 150.258 589.579 168.209V296.493Z" fill="currentColor"></path>
-              <path d="M989.774 96.8422L991.963 100.783L865.441 259.277H984.52L988.898 263.656V296.493L984.52 300.871H782.699L780.948 296.931L907.469 138.874L802.399 138.874L798.021 134.496V101.221L802.399 96.8422L989.774 96.8422Z" fill="currentColor"></path>
-              <path d="M1056.77 14.822L1061.15 10.4437L1101.43 10.4437L1105.81 14.822V296.493L1101.43 300.871H1061.15L1056.77 296.493V14.822Z" fill="currentColor"></path>
-              <path d="M1183.91 31.1677C1183.91 14.0923 1197.48 0.519531 1214.56 0.519531C1231.63 0.519531 1245.2 14.0923 1245.2 31.1677C1245.2 48.2431 1231.63 61.8158 1214.56 61.8158C1197.48 61.8158 1183.91 48.2431 1183.91 31.1677ZM1190.04 101.221L1194.42 96.8422L1234.7 96.8422L1239.07 101.221V296.493L1234.7 300.871H1194.42L1190.04 296.493V101.221Z" fill="currentColor"></path>
-              <path d="M1417.44 307.001C1357.02 307.001 1307.99 263.218 1307.99 198.857C1307.99 134.933 1357.9 90.7126 1417.44 90.7126C1480.92 90.7126 1523.82 134.496 1523.82 199.732V206.3L1519.44 210.678L1353.96 210.678C1357.02 241.326 1382.85 263.656 1417.87 263.656C1443.7 263.656 1464.28 251.834 1475.22 235.634L1479.6 234.759L1513.31 255.337V259.715C1494.05 289.05 1457.71 307.001 1417.44 307.001ZM1417 129.242C1384.16 129.242 1361.84 147.631 1356.15 172.587H1475.66C1470.85 146.317 1448.08 129.242 1417 129.242Z" fill="currentColor"></path>
-              <path d="M1639.85 296.493L1635.47 300.871L1595.63 300.871L1591.25 296.493V101.221L1595.63 96.8422H1634.16L1638.53 101.221V114.793H1639.41C1649.04 101.658 1671.37 90.7126 1699.39 90.7126C1724.78 90.7126 1744.92 98.5935 1757.61 113.48C1769.87 127.49 1776 148.506 1776 176.089V296.493L1771.62 300.871H1731.35L1726.97 296.493V185.284C1726.97 168.646 1723.9 155.511 1716.46 146.755C1709.46 138.874 1699.39 134.058 1684.06 134.058C1657.36 134.058 1642.91 150.258 1639.85 168.209V296.493Z" fill="currentColor"></path>
-            </svg></div>
-        </div>
-      </div>
-    </section>
-    <div class="mouse_label">
-      <div class="label_dot"></div>
-      <p class="label_text"></p>
-    </div>
     <div class="u-position-fixed">
       <div class="w-embed">
         <style>
@@ -413,36 +365,38 @@ html.wf-design-mode .guide_wrap {
         </div>
       </div>
     </div>
-    <main id="main" class="page_main">
-      <div class="project_wrap u-section">
-        <div data-wf--spacer--section-space="main" class="u-section-spacer w-variant-60a7ad7d-02b0-6682-95a5-2218e6fd1490 u-ignore-trim"></div>
-        <div class="project_contain u-container w-dyn-list">
-          <div role="list" class="project_layout u-flex-vertical-wrap u-alignment-center w-dyn-items">
-            <div role="listitem" class="project_item u-flex-horizontal-wrap u-align-items-center w-dyn-item">
-              <div class="project_thumb_wrap u-cover-absolute u-flex-vertical-nowrap u-gap-4">
-                <div class="project_thumb_inner"><img src="images/placeholder.svg" loading="lazy" alt="" class="u-background-skeleton"></div>
-                <p class="thumb_text_wrap w-dyn-bind-empty"></p>
+    <main id="main" class="page_main"></main>
+    <section class="project_masonry_wrap u-section">
+      <div data-wf--spacer--section-space="page-top" class="u-section-spacer w-variant-e359d2da-de19-6775-b122-3e06f925f39e u-ignore-trim"></div>
+      <div class="project_masonry_contain u-container w-dyn-list">
+        <div role="list" class="project_masonry_layout u-grid-custom w-dyn-items">
+          <div item-align="" item-style="" role="listitem" class="project_masonry_item w-dyn-item">
+            <div class="project_masonry_inner">
+              <a href="#" class="project_link w-inline-block"></a>
+              <div class="project_masonry_img_wrap"><img src="images/placeholder.svg" loading="lazy" alt="" class="u-background-skeleton">
+                <div class="project_masonry_overlay u-cover-absolute"></div>
               </div>
-              <div class="project_img_overlay"></div>
-              <div item-align="" item-style="" class="project_img_wrap">
-                <a href="#" class="project_link w-inline-block"></a><img src="images/placeholder.svg" loading="lazy" alt="" class="u-background-skeleton">
-              </div>
+              <p class="thumb_text_wrap u-alignment-center u-mt-3 w-dyn-bind-empty"></p>
             </div>
           </div>
-          <div class="w-dyn-empty">
-            <div>No items found.</div>
-          </div>
         </div>
-        <div data-wf--spacer--section-space="main" class="u-section-spacer w-variant-60a7ad7d-02b0-6682-95a5-2218e6fd1490 u-ignore-trim"></div>
+        <div class="w-dyn-empty">
+          <div>No items found.</div>
+        </div>
       </div>
-    </main>
+      <div data-wf--spacer--section-space="large" class="u-section-spacer w-variant-8cc18b30-4618-8767-0111-f6abfe45aaa3 u-ignore-trim"></div>
+    </section>
+    <div class="projects_mouse_label u-hflex-left-center u-gap-small">
+      <div class="label_dot"></div>
+      <p class="label_text"></p>
+    </div>
   </div>
   <script src="https://d3e54v103j8qbb.cloudfront.net/js/jquery-3.5.1.min.dc5e7f18c8.js?site=688b84e1d55545ae80e8ab02" type="text/javascript" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
   <script src="js/webflow.js" type="text/javascript"></script>
   <script src="https://cdn.prod.website-files.com/gsap/3.13.0/gsap.min.js" type="text/javascript"></script>
   <script src="https://cdn.jsdelivr.net/npm/@barba/core@2.10.3/dist/barba.umd.min.js"></script>
   <script src="https://cdn.prod.website-files.com/gsap/ScrollTrigger.min.js" type="text/javascript"></script>
-  <script src="http://127.0.0.1:3000/animations.js"></script>
+  <script src="animations.js"></script>
   <script data-barba-script="">
 $(".service-page-load-trigger").click();
 console.log("home");

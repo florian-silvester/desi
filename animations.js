@@ -21,8 +21,19 @@ console.log('🎨 Animations.js loaded');
    • deactivateOverviewMode() - Returns to carousel mode
    • testSliderOverviewAnimations() - Test function (run in console to debug)
    
-📍 Location: Search for "PROJECT HOVER ANIMATIONS", "DETAILS PANEL ANIMATIONS", or "SLIDER OVERVIEW TOGGLE" sections below
+🎯 QUICK REFERENCE - CUSTOM CURSOR SYSTEM:
+   • initializeCustomCursor() - Main setup (runs ONCE on page load, never again)
+   • setupCustomCursorListeners() - Add hover behaviors (runs after each page transition)
+   • updateCursorLabel(text, scaleDot) - Update cursor text and dot scale
+   • testCustomCursor() - Test mousemove listener and basic functionality
+   • debugCursorState() - Force cursor visible with red background for debugging
+   
+📍 Location: Search for section headers below for specific functionality
 */
+
+// ================================================================================
+// 🌍 GLOBAL VARIABLES & STATE MANAGEMENT
+// ================================================================================
 
 // Global array to store slider instances
 let sliderInstances = [];
@@ -33,7 +44,154 @@ let scrollPositions = {};
 // Global click position storage for transform origin effect
 let clickPosition = { x: 50, y: 50 }; // Default to center
 
-// ===== SCROLL ANIMATIONS =====
+// ================================================================================
+// 🖱️ CUSTOM CURSOR SYSTEM
+// ================================================================================
+// This section handles the custom cursor that follows the mouse and changes
+// based on what element is being hovered over
+//
+// BARBA.JS INTEGRATION:
+// 1. Cursor element MUST be outside data-barba="container" (stays in DOM forever)
+// 2. Initialize once on page load (mousemove listener + element references)
+// 3. On page transitions: Only remove/re-add hover listeners for new elements
+// 4. Cursor movement continues uninterrupted (mousemove listener never removed)
+
+/**
+ * CUSTOM CURSOR STATE TRACKING
+ * Stores references to cursor elements and tracks initialization state
+ */
+let customCursorState = {
+  isInitialized: false,
+  cursor: null,
+  labelText: null,
+  labelDot: null
+};
+
+/**
+ * CLEANUP FUNCTION FOR CUSTOM CURSOR
+ * Removes all cursor event listeners and resets state
+ * Called before page transitions and when reinitializing
+ */
+function destroyCustomCursor() {
+  console.log('🧹 [CURSOR CLEANUP] Full cursor teardown...');
+  document.removeEventListener('mousemove', handleCursorMove);
+  $(document).off('mouseenter.customCursor mouseleave.customCursor');
+  customCursorState = { isInitialized: false, cursor: null, labelText: null, labelDot: null };
+  console.log('✅ [CURSOR CLEANUP] Cursor completely destroyed.');
+}
+
+/**
+ * LIGHTWEIGHT SETUP FOR BARBA TRANSITIONS  
+ * Only re-adds hover listeners when cursor element persists outside container
+ */
+function setupCustomCursorListeners() {
+  console.log('🎨 [CURSOR HOVERS] Setting up hover listeners...');
+  
+  // Clean up any old hover listeners first
+  $(document).off('mouseenter.customCursor mouseleave.customCursor');
+
+  // PROJECT LINKS: Show "View" and scale dot
+  $(document).on('mouseenter.customCursor', '.project_link', () => updateCursorLabel("View", true));
+  $(document).on('mouseleave.customCursor', '.project_link', () => updateCursorLabel("", false));
+
+  // NAVIGATION ITEMS: Scale dot, no text
+  $(document).on('mouseenter.customCursor', '.nav_link', () => updateCursorLabel("", true));
+  $(document).on('mouseleave.customCursor', '.nav_link', () => updateCursorLabel("", false));
+  
+  // Add other hover listeners...
+  $(document).on('mouseenter.customCursor', '#bw', () => updateCursorLabel("Previous", false));
+  $(document).on('mouseleave.customCursor', '#bw', () => updateCursorLabel("", false));
+  $(document).on('mouseenter.customCursor', '#ffwd', () => updateCursorLabel("Next", false));
+  $(document).on('mouseleave.customCursor', '#ffwd', () => updateCursorLabel("", false));
+  $(document).on('mouseenter.customCursor', '.swiper-slide', () => updateCursorLabel("Swipe", false));
+  $(document).on('mouseleave.customCursor', '.swiper-slide', () => updateCursorLabel("", false));
+
+  console.log('✅ [CURSOR HOVERS] Hover listeners are ready.');
+}
+
+/**
+ * CURSOR MOVEMENT HANDLER
+ * Updates cursor position following the mouse with smooth GSAP animation
+ */
+function handleCursorMove(event) {
+  if (customCursorState.cursor) {
+    gsap.to(customCursorState.cursor, {
+      x: event.clientX,
+      y: event.clientY,
+      opacity: 1, // Make cursor visible on first movement
+      duration: 0.1, // Slight trailing effect
+      ease: "power2.out"
+    });
+  }
+}
+
+/**
+ * UPDATE CURSOR LABEL FUNCTION
+ * Changes the cursor text and optionally scales the dot
+ */
+function updateCursorLabel(text, scaleDot = false) {
+  if (customCursorState.labelText && customCursorState.labelDot) {
+    customCursorState.labelText.textContent = text || '';
+    gsap.to(customCursorState.labelDot, {
+      scale: scaleDot ? 1.30 : 1,
+      duration: 0.1,
+      ease: 'power2.out'
+    });
+  }
+}
+
+/**
+ * MAIN INITIALIZATION FUNCTION FOR CUSTOM CURSOR
+ * Sets up the custom cursor system and all hover behaviors
+ */
+function initializeCustomCursor() {
+  console.log('🎯 [CURSOR INIT] Starting ONE-TIME setup...');
+  
+  if (customCursorState.isInitialized) {
+    console.log('✅ [CURSOR INIT] Already initialized, skipping.');
+    return;
+  }
+  
+  const cursor = document.querySelector('.projects_mouse_label');
+  const labelText = cursor ? cursor.querySelector('.label_text') : null;
+  const labelDot = cursor ? cursor.querySelector('.label_dot') : null;
+  
+  if (!cursor || !labelText || !labelDot) {
+    console.warn('❌ [CURSOR INIT] Cursor elements not found. Aborting.');
+    return;
+  }
+  
+  // Store references ONCE
+  customCursorState.cursor = cursor;
+  customCursorState.labelText = labelText;
+  customCursorState.labelDot = labelDot;
+  
+  // Set initial position and state to prevent cursor appearing at (0,0)
+  gsap.set(cursor, {
+    x: -100, // Start off-screen
+    y: -100,
+    opacity: 0 // Start invisible until first mouse movement
+  });
+  
+  // Clear any existing text
+  labelText.textContent = '';
+  
+  // Attach mousemove listener ONCE and NEVER remove it
+  document.addEventListener('mousemove', handleCursorMove);
+  
+  // Set initial hover listeners
+  setupCustomCursorListeners();
+  
+  customCursorState.isInitialized = true;
+  console.log('🎉 [CURSOR INIT] ===== ONE-TIME CURSOR SETUP COMPLETE! =====');
+  console.log('   - Mouse movement tracking is now active permanently.');
+}
+
+// ================================================================================
+// 📜 SCROLL-TRIGGERED ANIMATIONS
+// ================================================================================
+
+// Global scroll animation elements
 let scrollAnimationElements = [];
 
 function destroyScrollAnimations() {
@@ -46,21 +204,32 @@ function destroyScrollAnimations() {
 
 function handleScroll() {
   scrollAnimationElements.forEach((item, index) => {
-    if (item.animated) return; // Skip if already animated
-    
     const rect = item.element.getBoundingClientRect();
     const windowHeight = window.innerHeight;
     
-    // Check if element is 85% into viewport
+    // Check if element is 85% into viewport (scrolling down trigger)
     if (rect.top <= windowHeight * 0.85) {
-      console.log(`✨ Animating project image wrap ${index + 1}`);
-      gsap.to(item.element, {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        ease: "power2.out"
-      });
-      item.animated = true;
+      if (!item.animated) {
+        console.log(`✨ Animating project element ${index + 1}`);
+        gsap.to(item.element, {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          ease: "power2.out"
+        });
+        item.animated = true;
+      }
+    } else {
+      // Reset animation state when element goes back above viewport
+      // This allows re-animation on next scroll down
+      if (item.animated) {
+        console.log(`🔄 Resetting animation state for element ${index + 1}`);
+        gsap.set(item.element, {
+          opacity: 0,
+          y: 30
+        });
+        item.animated = false;
+      }
     }
   });
 }
@@ -73,14 +242,20 @@ function initializeScrollAnimations() {
   // AND EXCLUDE those inside .swiper-slide (slider entrance animation handles those)
   const projectImgWraps = document.querySelectorAll('.project_img_wrap:not(.projects_item .project_img_wrap):not(.swiper-slide .project_img_wrap)');
   
-  if (projectImgWraps.length > 0) {
-    console.log(`🖼️ Found ${projectImgWraps.length} project image wraps to animate (excluding home page and slider items)`);
+  // Also animate .project_masonry_item elements with the same effect
+  const projectMasonryItems = document.querySelectorAll('.project_masonry_item');
+  
+  // Combine both types of elements
+  const allScrollElements = [...projectImgWraps, ...projectMasonryItems];
+  
+  if (allScrollElements.length > 0) {
+    console.log(`🖼️ Found ${projectImgWraps.length} project image wraps and ${projectMasonryItems.length} masonry items to animate (excluding home page and slider items)`);
     
     // Reset scroll elements array
     scrollAnimationElements = [];
     
     // Set initial state and prepare for animation
-    projectImgWraps.forEach((element, index) => {
+    allScrollElements.forEach((element, index) => {
       // Set initial state (invisible, slightly below final position)
       gsap.set(element, {
         opacity: 0,
@@ -100,13 +275,16 @@ function initializeScrollAnimations() {
     // Check immediately in case elements are already in view
     handleScroll();
     
-    console.log('✅ Scroll animations for project image wraps initialized');
+    console.log('✅ Scroll animations for project elements initialized');
   } else {
-    console.log('ℹ️ No project image wraps found on this page (or all are handled by home page stagger or slider entrance)');
+    console.log('ℹ️ No project elements found on this page (or all are handled by home page stagger or slider entrance)');
   }
 }
 
-// ===== CLICK POSITION TRACKING =====
+// ================================================================================
+// 🖱️ CLICK POSITION TRACKING & DOM READY
+// ================================================================================
+
 $(document).ready(function() {
   console.log('📱 DOM ready - animations.js connected to Webflow');
   
@@ -124,16 +302,19 @@ $(document).ready(function() {
   
   // Initialize components immediately for direct page loads
   setTimeout(() => {
-  initializeSliders();
-  initializeScrollAnimations();
-  initializeProjectHoverAnimations();
-  initializeDetailsPanelAnimations();
-  initializeSliderOverviewAnimations();
-  
-  // Check if we're on the index page and animate immediately
-  if (document.querySelector('.index_item')) {
-    animateIndexPage();
-  }
+    initializeSliders();
+    initializeScrollAnimations();
+    initializeProjectHoverAnimations();
+    initializeDetailsPanelAnimations();
+    initializeSliderOverviewAnimations();
+    
+    // CRITICAL: Initialize cursor ONCE on page load
+    initializeCustomCursor();
+    
+    // Check if we're on the index page and animate immediately
+    if (document.querySelector('.index_item')) {
+      animateIndexPage();
+    }
   }, 100);
   
   // Initialize Barba after a small delay
@@ -143,7 +324,9 @@ $(document).ready(function() {
   
 });
 
-// ===== PROJECT HOVER ANIMATIONS =====
+// ================================================================================
+// 🎯 PROJECT HOVER ANIMATIONS SYSTEM
+// ================================================================================
 // This section handles the fade-in/fade-out animations for project overlays
 // when hovering over .project_img_wrap elements
 
@@ -272,7 +455,10 @@ function initializeProjectHoverAnimations() {
   }
 }
 
-// ===== GSAP SLIDER IMPLEMENTATION =====
+// ================================================================================
+// 🎠 GSAP SLIDER SYSTEM
+// ================================================================================
+
 function destroySliders() {
   console.log('🗑️ Destroying existing slider instances...');
   
@@ -323,32 +509,26 @@ function initializeSliders() {
           width: 50% !important;
         }
       }
-      /* Hide navigation until GSAP creates it */
-      .slider-prev,
-      .slider-next {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 10;
-        background: rgba(0,0,0,0.5);
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        cursor: pointer;
-        font-size: 18px;
-        opacity: 0;
-        transition: opacity 0.3s ease;
+      /* Hide ghost elements in overview mode - but don't touch their positioning */
+      .swiper.overview-active .slider_ghost_clickable {
+        display: none !important;
       }
-      .slider-prev { left: 10px; }
-      .slider-next { right: 10px; }
-      .slider-prev:hover,
-      .slider-next:hover {
-        background: rgba(0,0,0,0.7);
+      /* Hide global navigation when in overview mode - simple and reliable */
+      body.overview-mode #bw,
+      body.overview-mode #ffwd {
+        display: none !important;
       }
-      .slider-prev.disabled,
-      .slider-next.disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
+
+      /* Hide global navigation and the entire ghost wrap in overview mode */
+      body.overview-mode .slider_ghost_wrap,
+      body.overview-mode #bw,
+      body.overview-mode #ffwd {
+        display: none !important;
+      }
+
+      /* --- DEBUG: Red Container of Truth --- */
+      body.overview-mode .page_wrap {
+        background-color: red !important;
       }
     </style>
   `;
@@ -365,6 +545,15 @@ function initializeSliders() {
   
   // First destroy any existing sliders
   destroySliders();
+  
+  // Find global navigation elements (outside of sliders)
+  const $globalPrevBtn = $('#bw');
+  const $globalNextBtn = $('#ffwd');
+  
+  console.log(`🔍 Global navigation found:`, {
+    prev: $globalPrevBtn.length > 0 ? '✅ Found' : '❌ Missing',
+    next: $globalNextBtn.length > 0 ? '✅ Found' : '❌ Missing'
+  });
   
   // Run synchronously to prevent flash of unstyled content
   $('.swiper').each(function(index) {
@@ -403,19 +592,30 @@ function initializeSliders() {
       isMobile
     });
     
-    // Create navigation buttons (if they don't exist)
-    let $prevBtn = $slider.find('.slider-prev, .swiper-prev');
-    let $nextBtn = $slider.find('.slider-next, .swiper-next');
+    // Use global navigation elements instead of looking inside slider
+    let $prevBtn = $globalPrevBtn;
+    let $nextBtn = $globalNextBtn;
     
-    // If no nav buttons found, create them
+    // Store reference to this slider's functions for global navigation
+    const sliderControls = {
+      goToPrev: null,
+      goToNext: null,
+      index: index
+    };
+    
+    // If no nav buttons found, skip this slider (Webflow should provide them)
     if (!$prevBtn.length || !$nextBtn.length) {
-      $slider.append(`
-        <button class="slider-prev">←</button>
-        <button class="slider-next">→</button>
-      `);
-      $prevBtn = $slider.find('.slider-prev');
-      $nextBtn = $slider.find('.slider-next');
+      console.warn(`❌ No #bw or #ffwd found in slider ${index + 1}`);
+      return;
     }
+    
+    console.log(`🎯 Using Webflow navigation: #bw and #ffwd for slider ${index + 1}`);
+    
+    // Make sure ghost clickable elements are visible in slider mode
+    gsap.set([$prevBtn, $nextBtn], { 
+      opacity: 1, 
+      pointerEvents: 'auto'
+    });
     
     // Show navigation buttons
     gsap.set([$prevBtn, $nextBtn], { opacity: 1 });
@@ -434,7 +634,7 @@ function initializeSliders() {
       $prevBtn.removeClass('disabled');
       $nextBtn.removeClass('disabled');
       
-      console.log(`📱 Slider ${index + 1} moved to slide ${currentSlide} (offset: ${offset}%)`);
+      console.log(`�� Slider ${index + 1} moved to slide ${currentSlide} (offset: ${offset}%)`);
     }
     
     // Navigation handlers
@@ -458,6 +658,10 @@ function initializeSliders() {
       updateSlider();
     }
     
+    // Store functions in slider controls
+    sliderControls.goToPrev = goToPrev;
+    sliderControls.goToNext = goToNext;
+    
     function goToSlide(slideIndex, animated = true) {
       const newSlideIndex = Math.max(0, Math.min(slideIndex, maxSlide));
       console.log(`🚀 Navigating to slide: ${slideIndex} -> clamped to ${newSlideIndex}`);
@@ -474,8 +678,11 @@ function initializeSliders() {
       console.log(`🛑 Disabling slider ${index + 1}`);
       // Reset position to zero
       gsap.set($wrapper, { x: '0%' });
-      // Hide navigation buttons
-      gsap.set([$prevBtn, $nextBtn], { opacity: 0, pointerEvents: 'none' });
+      // Hide global navigation elements when slider is disabled (for overview mode)
+      gsap.set([$globalPrevBtn, $globalNextBtn], { 
+        opacity: 0, 
+        pointerEvents: 'none' 
+      });
       // Disable keyboard navigation for this slider
       $(document).off('keydown.slider' + index);
     }
@@ -484,8 +691,11 @@ function initializeSliders() {
       console.log(`✅ Enabling slider ${index + 1}`);
       // Update to current position
       updateSlider(false);
-      // Show navigation buttons
-      gsap.set([$prevBtn, $nextBtn], { opacity: 1, pointerEvents: 'auto' });
+      // Show global navigation elements when slider is enabled
+      gsap.set([$globalPrevBtn, $globalNextBtn], { 
+        opacity: 1, 
+        pointerEvents: 'auto' 
+      });
       // Re-enable keyboard navigation
       $(document).on('keydown.slider' + index, function(e) {
         if (e.key === 'ArrowLeft') goToPrev();
@@ -493,9 +703,24 @@ function initializeSliders() {
       });
     }
     
-    // Bind events
-    $prevBtn.on('click', goToPrev);
-    $nextBtn.on('click', goToNext);
+    // Bind events to the global navigation elements (only for the first slider for now)
+    if (index === 0 && $globalPrevBtn.length && $globalNextBtn.length) {
+      console.log(`🔗 Binding global navigation to slider ${index + 1}`);
+      
+      // Remove any existing bindings first
+      $globalPrevBtn.off('click.slider');
+      $globalNextBtn.off('click.slider');
+      
+      // Bind to this slider's functions
+      $globalPrevBtn.on('click.slider', goToPrev);
+      $globalNextBtn.on('click.slider', goToNext);
+      
+      // Make sure they're visible
+      gsap.set([$globalPrevBtn, $globalNextBtn], { 
+        opacity: 1, 
+        pointerEvents: 'auto'
+      });
+    }
     
     // Keyboard navigation
     $(document).on('keydown.slider' + index, function(e) {
@@ -552,8 +777,11 @@ function initializeSliders() {
     
     // Store cleanup function
     const cleanup = function() {
-      $prevBtn.off('click');
-      $nextBtn.off('click');
+      // Only clean up global navigation for the first slider
+      if (index === 0) {
+        $globalPrevBtn.off('click.slider');
+        $globalNextBtn.off('click.slider');
+      }
       $(document).off('keydown.slider' + index);
       $(window).off('resize.slider' + index);
       console.log(`🧹 Slider ${index + 1} cleaned up`);
@@ -577,12 +805,15 @@ function initializeSliders() {
   console.log('✅ GSAP sliders setup started');
 }
 
-// ===== BARBA.JS PAGE TRANSITIONS =====
+// ================================================================================
+// 🎭 BARBA.JS PAGE TRANSITIONS
+// ================================================================================
+
 function initializeBarba() {
   console.log('🎭 Initializing Barba.js transitions...');
   
   barba.init({
-    sync: true, // ADD BACK - needed for crossfade to work
+    sync: true, 
     
     transitions: [
       {
@@ -593,28 +824,22 @@ function initializeBarba() {
           // Store scroll position
           scrollPositions[data.current.url.path] = window.scrollY;
           
-          // Destroy sliders
+          // Destroy all page-specific components
           destroySliders();
-          
-          // Destroy scroll animations
           destroyScrollAnimations();
-          
-          // Destroy hover animations
           destroyProjectHoverAnimations();
-          
-          // Destroy details panel animations
           destroyDetailsPanelAnimations();
-          
-          // Destroy slider overview animations
           destroySliderOverviewAnimations();
+          
+          // IMPORTANT: Only remove hover listeners. The cursor element and
+          // its mousemove listener will persist.
+          $(document).off('mouseenter.customCursor mouseleave.customCursor');
 
-          // Simple fade out - NO DELAY
+          // Simple fade out
           return gsap.to(data.current.container, {
             opacity: 0,
             duration: 0.5,
-            ease: "power2.out",
-            onStart: () => console.log('🌅 Leave animation started'),
-            onComplete: () => console.log('🌅 Leave animation complete')
+            ease: "power2.out"
           });
         },
         
@@ -641,6 +866,9 @@ function initializeBarba() {
           // Initialize slider overview animations for new page
           initializeSliderOverviewAnimations();
 
+          // Re-setup hover listeners for the new page's content
+          setupCustomCursorListeners();
+
           // Simple fade in - NO DELAY
           return gsap.fromTo(data.next.container,
             { opacity: 0 },
@@ -664,13 +892,10 @@ function initializeBarba() {
          after(data) {
            console.log('🔄 After crossfade complete');
            
-           // Restore scroll position if we have one stored
+           // Restore scroll position
            const storedPosition = scrollPositions[data.next.url.path];
            if (storedPosition !== undefined) {
-             console.log(`📍 Restoring scroll position: ${storedPosition} for ${data.next.url.path}`);
              window.scrollTo(0, storedPosition);
-           } else {
-             console.log('📍 No stored position, staying at top');
            }
          }
        }
@@ -704,7 +929,10 @@ function initializeBarba() {
   console.log('✅ Barba.js initialized successfully!');
 }
 
-// ===== SLIDER ENTRANCE ANIMATION =====
+// ================================================================================
+// 🎬 SLIDER ENTRANCE ANIMATION
+// ================================================================================
+
 function animateSliderEntrance() {
   console.log('✨ Animating slider entrance with stagger');
   
@@ -731,24 +959,13 @@ function animateSliderEntrance() {
         console.log('✅ Slider entrance animation complete');
       }
     });
-    
-    // Also animate navigation buttons if they exist
-    const navButtons = document.querySelectorAll('.slider-prev, .slider-next');
-    if (navButtons.length > 0) {
-      gsap.set(navButtons, { opacity: 0, scale: 0.8 });
-      gsap.to(navButtons, {
-        opacity: 1,
-        scale: 1,
-        duration: 0.4,
-        stagger: 0.1,
-        delay: 0.5,
-        ease: "back.out(1.7)"
-      });
-    }
   }
 }
 
-// ===== PAGE-SPECIFIC ANIMATIONS =====
+// ================================================================================
+// 🎨 PAGE-SPECIFIC ANIMATIONS
+// ================================================================================
+
 function animateHomePage() {
   console.log('🎨 Animating home page elements...');
   
@@ -813,7 +1030,10 @@ function animateContactPage() {
   });
 }
 
-// ===== UTILITY FUNCTIONS =====
+// ================================================================================
+// 🧪 UTILITY & TEST FUNCTIONS
+// ================================================================================
+
 window.testTransition = function() {
   console.log('🧪 Testing page transition...');
   
@@ -870,6 +1090,84 @@ window.testSliderOverviewAnimations = function() {
   initializeSliderOverviewAnimations();
   console.log('✅ [TEST] Test complete - check above logs for detailed setup process');
   console.log('💡 [TEST] If on a detail page with slider, click the "Overview" button to test toggle');
+};
+
+window.testCustomCursor = function() {
+  console.log('🧪 [TEST] ==================== TESTING CUSTOM CURSOR ====================');
+  
+  // Check cursor state
+  console.log('Current state:', customCursorState);
+  
+  const cursor = document.querySelector('.projects_mouse_label');
+  console.log('Cursor element found:', !!cursor);
+  
+  if (!cursor) {
+    console.error('❌ [TEST] Cursor element not found! Check Webflow structure.');
+    return;
+  }
+  
+  // Test if mousemove listener is working
+  const testMove = (e) => {
+    console.log('🖱️ Mouse at:', e.clientX, e.clientY);
+    document.removeEventListener('mousemove', testMove);
+  };
+  document.addEventListener('mousemove', testMove);
+  console.log('Move your mouse to test if mousemove listener is working...');
+  
+  // Test label update
+  updateCursorLabel("TEST", true);
+  setTimeout(() => updateCursorLabel("", false), 2000);
+  
+  console.log('✅ Cursor test initiated. Watch console for mouse movement.');
+};
+
+window.debugCursorState = function() {
+  console.log('🔍 [DEBUG] ==================== CURSOR STATE DEBUG ====================');
+  console.log('State:', customCursorState);
+  
+  const cursor = document.querySelector('.projects_mouse_label');
+  console.log('Cursor element found:', !!cursor);
+  
+  if (cursor) {
+    // Force make visible and test positioning
+    cursor.style.cssText = `
+      position: fixed !important;
+      top: 50px !important;
+      left: 50px !important;
+      background: red !important;
+      padding: 20px !important;
+      z-index: 9999 !important;
+      pointer-events: none !important;
+      display: flex !important;
+      gap: 10px !important;
+      border: 2px solid blue !important;
+    `;
+    
+    const labelText = cursor.querySelector('.label_text');
+    const labelDot = cursor.querySelector('.label_dot');
+    
+    if (labelText) {
+      labelText.textContent = 'DEBUG MODE';
+      labelText.style.cssText = 'color: white !important; font-size: 16px !important;';
+    }
+    
+    if (labelDot) {
+      labelDot.style.cssText = 'background: yellow !important; width: 20px !important; height: 20px !important; border-radius: 50% !important;';
+    }
+    
+    console.log('✅ Cursor forced visible with red background and "DEBUG MODE" text');
+    console.log('If you can see this, the cursor element exists and can be styled.');
+    
+    // Test if we can move it with GSAP
+    setTimeout(() => {
+      gsap.to(cursor, { x: 200, y: 200, duration: 1 });
+      console.log('🎯 Testing GSAP movement to 200,200');
+    }, 1000);
+    
+  } else {
+    console.error('❌ Cursor element not found!');
+    console.log('All elements with "mouse" or "label":', document.querySelectorAll('[class*="mouse"], [class*="label"]'));
+  }
 };
 
 // DEBUG: Summary function to explain the hover system
@@ -972,8 +1270,9 @@ window.forceTestScale = function() {
   );
 };
 
-
-// ===== DETAILS PANEL ANIMATIONS =====
+// ================================================================================
+// 📱 DETAILS PANEL ANIMATIONS SYSTEM
+// ================================================================================
 // This section handles the expandable details panel on project detail pages
 // Triggered by clicking the "Details" nav link with ID "Trigger"
 
@@ -1046,9 +1345,16 @@ function initializeDetailsPanelAnimations() {
     visibility: 'hidden'
   });
   
-  gsap.set([$detailsLayout, $projectOverlay], {
+  gsap.set($detailsLayout, {
     opacity: 0
   });
+  
+  // Only animate overlay if it exists
+  if ($projectOverlay.length > 0) {
+    gsap.set($projectOverlay, {
+      opacity: 0
+    });
+  }
   
   console.log('✅ [DETAILS INIT] Initial state set - panel hidden with scaleY(0)');
   
@@ -1141,14 +1447,16 @@ function openDetailsPanel() {
     onComplete: () => console.log('   ✅ [DETAILS OPEN] Layout fade-in complete')
   }, 0.2)
   
-  // 3. Fade in the project overlay (starts 0.1s after layout fade begins - stagger effect)
-  .to($projectOverlay, {
-    opacity: 1,
-    duration: 0.4,
-    ease: 'power2.out',
-    onStart: () => console.log('   🌫️ [DETAILS OPEN] Overlay fade-in started (staggered)'),
-    onComplete: () => console.log('   ✅ [DETAILS OPEN] Overlay fade-in complete')
-  }, 0.3);
+  // 3. Fade in the project overlay (starts 0.1s after layout fade begins - stagger effect) - ONLY IF IT EXISTS
+  if ($projectOverlay.length > 0) {
+    openTimeline.to($projectOverlay, {
+      opacity: 1,
+      duration: 0.4,
+      ease: 'power2.out',
+      onStart: () => console.log('   🌫️ [DETAILS OPEN] Overlay fade-in started (staggered)'),
+      onComplete: () => console.log('   ✅ [DETAILS OPEN] Overlay fade-in complete')
+    }, 0.3);
+  }
   
   console.log('🎬 [DETAILS OPEN] Staggered open animation timeline launched!');
 }
@@ -1182,17 +1490,26 @@ function closeDetailsPanel() {
   console.log('🌫️ [DETAILS CLOSE] Step 1: Fading out content simultaneously...');
   
   // CLOSE ANIMATION SEQUENCE:
-  // 1. Fade out both layout and overlay simultaneously (quick)
-  closeTimeline.to([$detailsLayout, $projectOverlay], {
+  // 1. Fade out layout (always exists)
+  closeTimeline.to($detailsLayout, {
     opacity: 0,
     duration: 0.3,
     ease: 'power2.out',
     onStart: () => console.log('   🌪️ [DETAILS CLOSE] Content fade-out started'),
     onComplete: () => console.log('   ✅ [DETAILS CLOSE] Content fade-out complete')
-  }, 0)
+  }, 0);
   
-  // 2. Scale down to 0 (starts shortly after fade-out begins)
-  .to($detailsWrap, {
+  // 2. Fade out overlay simultaneously (only if it exists)
+  if ($projectOverlay.length > 0) {
+    closeTimeline.to($projectOverlay, {
+      opacity: 0,
+      duration: 0.3,
+      ease: 'power2.out'
+    }, 0);
+  }
+  
+  // 3. Scale down to 0 (starts shortly after fade-out begins)
+  closeTimeline.to($detailsWrap, {
     scaleY: 0,
     duration: 0.4,
     ease: 'power2.in',
@@ -1200,7 +1517,7 @@ function closeDetailsPanel() {
     onComplete: () => console.log('   ✅ [DETAILS CLOSE] ScaleY collapse complete')
   }, 0.1)
   
-  // 3. Hide completely when animation is done
+  // 4. Hide completely when animation is done
   .set($detailsWrap, {
     visibility: 'hidden'
   });
@@ -1208,8 +1525,9 @@ function closeDetailsPanel() {
   console.log('🏁 [DETAILS CLOSE] Close animation timeline launched!');
 }
 
-
-// ===== SLIDER OVERVIEW TOGGLE =====
+// ================================================================================
+// 🌐 SLIDER OVERVIEW TOGGLE SYSTEM
+// ================================================================================
 // This section handles toggling between slider mode and overview (grid) mode
 // on project detail pages with GSAP sliders
 
@@ -1300,12 +1618,7 @@ function initializeSliderOverviewAnimations() {
   console.log('🎨 [OVERVIEW INIT] Step 3: Adding overview mode CSS...');
   const overviewCSS = `
     <style id="slider-overview-css">
-      /* Hide navigation buttons in overview mode */
-      .swiper.overview-active .slider-prev,
-      .swiper.overview-active .slider-next {
-        opacity: 0 !important;
-        pointer-events: none !important;
-      }
+      /* Ghost clickable elements are already hidden via main slider CSS */
     </style>
   `;
   
@@ -1336,11 +1649,22 @@ function initializeSliderOverviewAnimations() {
   
   // STEP 5: Set up click handler for slides in overview mode
   console.log('🎨 [OVERVIEW INIT] Step 5: Setting up slide click handler for navigation...');
-  $swiperWrapper.on('click.sliderOverview', '.swiper-slide', function() {
+  $swiperWrapper.on('click.sliderOverview', '.swiper-slide', function(e) {
+    console.log('🖱️ [THUMBNAIL CLICK] Slide clicked!', {
+      isOverviewMode: sliderOverviewState.isOverviewMode,
+      isAnimating: sliderOverviewState.isAnimating,
+      target: e.target,
+      currentTarget: this
+    });
+    
     // Only act if we are in overview mode
     if (!sliderOverviewState.isOverviewMode || sliderOverviewState.isAnimating) {
+      console.log('❌ [THUMBNAIL CLICK] Click ignored - not in overview mode or animating');
       return;
     }
+    
+    e.preventDefault();
+    e.stopPropagation();
     
     const slideIndex = $(this).index();
     console.log(`🖼️ [OVERVIEW NAV] Clicked on thumbnail for slide index: ${slideIndex}`);
@@ -1348,6 +1672,9 @@ function initializeSliderOverviewAnimations() {
     // Use the exposed slider controls to go to the correct slide (without animation)
     if (sliderInstance && sliderInstance.goToSlide) {
       sliderInstance.goToSlide(slideIndex, false);
+      console.log(`✅ [OVERVIEW NAV] Navigated to slide ${slideIndex}`);
+    } else {
+      console.warn('❌ [OVERVIEW NAV] No slider instance available');
     }
     
     // Deactivate overview mode to return to the slider
@@ -1372,11 +1699,18 @@ function activateOverviewMode() {
   // Set state IMMEDIATELY 
   sliderOverviewState.isAnimating = true;
   
+  // --- DEBUG: Add body class using Vanilla JS for reliability ---
+  console.log("   - Will attempt to add 'overview-mode' to body...");
+  console.log("   - Class list BEFORE:", document.body.className);
+  document.body.classList.add('overview-mode');
+  console.log("   - Class list AFTER:", document.body.className);
+  console.log("   - Successfully added 'overview-mode' to body.");
+
   const $overviewBtn = $('#Overview');
   const $swiper = $('.swiper');
   const $swiperWrapper = $('.swiper-wrapper');
   const $slides = $('.swiper-slide');
-  const $navButtons = $('.slider-prev, .slider-next');
+  const $navButtons = $('#bw, #ffwd'); // CORRECT: Use the correct IDs
   
   // CRITICAL: Disable slider functionality first
   const sliderInstance = sliderInstances.length > 0 ? sliderInstances[0] : null;
@@ -1442,11 +1776,18 @@ function deactivateOverviewMode() {
   sliderOverviewState.isAnimating = true;
   sliderOverviewState.isOverviewMode = false; // State updated on completion
   
+  // --- DEBUG: Remove body class using Vanilla JS for reliability ---
+  console.log("   - Will attempt to remove 'overview-mode' from body...");
+  console.log("   - Class list BEFORE:", document.body.className);
+  document.body.classList.remove('overview-mode');
+  console.log("   - Class list AFTER:", document.body.className);
+  console.log("   - Successfully removed 'overview-mode' from body.");
+
   const $overviewBtn = $('#Overview');
   const $swiper = $('.swiper');
   const $swiperWrapper = $('.swiper-wrapper');
   const $slides = $('.swiper-slide');
-  const $navButtons = $('.slider-prev, .slider-next');
+  const $navButtons = $('#bw, #ffwd'); // CORRECT: Use the correct IDs
   
   // Create timeline for smooth transition back
   const deactivateTimeline = gsap.timeline({

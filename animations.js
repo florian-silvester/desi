@@ -445,22 +445,16 @@ $(document).ready(function() {
     // Apply random masonry offsets on initial page load
     randomizeMasonryOffsets();
     
-    // SIMPLE SVG ANIMATION - Always animate these on page load
-    console.log('🎨 Starting SVG logo animation...');
-    gsap.to(['.studio_svg', '.penzlien_svg'], {
-      opacity: 1,
-      y: 0,
-      duration: 0.8,
-      ease: "power2.out",
-      delay: 0.8,
-      stagger: 0.2,
-      onStart: () => console.log('✨ SVG logos animating in'),
-      onComplete: () => console.log('✅ SVG logo animation complete')
-    });
+    // REMOVED DIRECT PAGE LOAD ANIMATION - Let Barba handle it to avoid double animation
     
     // Check if we're on the index page and animate immediately
     if (document.querySelector('.index_item')) {
       animateIndexPage();
+    }
+    
+    // Initialize SVG scroll animations if SVGs exist
+    if (document.querySelector('.studio_svg') || document.querySelector('.penzlien_svg')) {
+      initializeSVGScrollAnimations();
     }
   }, 100);
   
@@ -978,6 +972,7 @@ function initializeBarba() {
           destroyProjectHoverAnimations();
           destroyDetailsPanelAnimations();
           destroySliderOverviewAnimations();
+          destroySVGScrollAnimations();
           
           // IMPORTANT: Only remove hover listeners. The cursor element and
           // its mousemove listener will persist.
@@ -1019,6 +1014,15 @@ function initializeBarba() {
           
           // Apply random masonry offsets for new page content
           randomizeMasonryOffsets();
+          
+          // HOMEPAGE ANIMATIONS - Check if we're entering the homepage
+          if (data.next.container.querySelector('.studio_svg') || data.next.container.querySelector('.penzlien_svg')) {
+            console.log('🎯 Homepage detected in Barba transition');
+            animateHomepageElements('Barba transition');
+            
+            // CRITICAL: Also initialize scroll animations for SVGs
+            initializeSVGScrollAnimations();
+          }
 
           // Simple fade in - NO DELAY
           return gsap.fromTo(data.next.container,
@@ -1053,13 +1057,7 @@ function initializeBarba() {
     ],
     
     views: [
-      {
-        namespace: 'home',
-        afterEnter() {
-          console.log('🏠 Home page loaded');
-          animateHomePage();
-        }
-      },
+
       {
         namespace: 'contact',
         afterEnter() {
@@ -1962,3 +1960,208 @@ function deactivateOverviewMode() {
   });
 }
 
+// ================================================================================
+// 🎨 REUSABLE HOMEPAGE ANIMATIONS
+// ================================================================================
+
+/**
+ * CENTRALIZED HOMEPAGE ANIMATION FUNCTION
+ * Handles SVG logo animation + hero wrap height animation
+ * Called from: direct page load, Barba transitions, and index page view
+ */
+function animateHomepageElements(context = 'unknown') {
+  console.log(`🎨 Starting homepage animations (${context})...`);
+  
+  // Find SVG elements
+  const svgElements = document.querySelectorAll('.studio_svg, .penzlien_svg');
+  const heroWrap = document.querySelector('.hero_wrap');
+  
+  if (svgElements.length === 0) {
+    console.log(`ℹ️ No SVG elements found (${context})`);
+    return;
+  }
+  
+  // STEP 1: Reset SVGs to initial state (for Barba transitions)
+  console.log(`🔄 Resetting SVGs to initial state (${context})...`);
+  gsap.set(svgElements, {
+    opacity: 0,
+    y: 30
+  });
+  
+  // STEP 2: Animate SVGs
+  gsap.to(svgElements, {
+    opacity: 1,
+    y: 0,
+    duration: 0.8,
+    ease: "power2.out",
+    delay: 0.8,
+    stagger: 0.2,
+    onStart: () => console.log(`✨ SVG logos animating in (${context})`),
+    onComplete: () => console.log(`✅ SVG logo animation complete (${context})`)
+  });
+  
+  // STEP 3: Animate hero wrap (if it exists)
+  if (heroWrap) {
+    console.log(`🔍 Current hero_wrap height (${context}):`, getComputedStyle(heroWrap).height);
+    
+    gsap.fromTo(heroWrap, 
+      {
+        height: getComputedStyle(heroWrap).height
+      },
+      {
+        height: '70vh',
+        duration: 0.8,
+        ease: "power2.out",
+        delay: 1.8, // 0.8s (SVG delay) + 1s = 1.8s total delay
+        onStart: () => console.log(`✨ Hero wrap animating to 70vh height (${context})`),
+        onComplete: () => console.log(`✅ Hero wrap animation complete (${context})`)
+      }
+    );
+  } else {
+    console.log(`ℹ️ No .hero_wrap found (${context})`);
+  }
+}
+
+/**
+ * SCROLL-TRIGGERED SVG ANIMATIONS
+ * Fade out SVGs on scroll down (reverse stagger)
+ * Fade in SVGs on scroll up (normal stagger)
+ */
+let lastScrollY = 0;
+let svgsVisible = true;
+let svgScrollHandler = null; // Store reference for cleanup
+let svgScrollInitialized = false; // Prevent multiple initialization
+
+function initializeSVGScrollAnimations() {
+  // CRITICAL: Don't initialize if already running
+  if (svgScrollInitialized) {
+    console.log('⚠️ SVG scroll animations already initialized - skipping');
+    return;
+  }
+  
+  console.log('📜 Initializing SVG scroll animations...');
+  
+  const svgElements = document.querySelectorAll('.studio_svg, .penzlien_svg');
+  
+  if (svgElements.length === 0) {
+    console.log('ℹ️ No SVG elements found for scroll animations');
+    return;
+  }
+  
+  svgScrollHandler = function handleSVGScroll() {
+    const currentScrollY = window.scrollY;
+    const scrollDirection = currentScrollY > lastScrollY ? 'down' : 'up';
+    
+    // Only animate if scroll direction changed and we're past initial position
+    if (currentScrollY > 50) { // Start animations after 50px scroll
+      
+      if (scrollDirection === 'down' && svgsVisible) {
+        // SCROLL DOWN: Fade out with reverse stagger
+        console.log('🔽 Scrolling down - fading out SVGs (reverse stagger)');
+        gsap.to(['.penzlien_svg', '.studio_svg'], { // REVERSE ORDER
+          opacity: 0,
+          duration: 0.4,
+          stagger: 0.1, // Penzlien first, then studio
+          ease: "power2.out"
+        });
+        svgsVisible = false;
+        
+      } else if (scrollDirection === 'up' && !svgsVisible) {
+        // SCROLL UP: Fade in with normal stagger
+        console.log('🔼 Scrolling up - fading in SVGs (normal stagger)');
+        gsap.to(['.studio_svg', '.penzlien_svg'], { // NORMAL ORDER
+          opacity: 1,
+          y: 0,
+          duration: 0.4,
+          stagger: 0.1, // Studio first, then penzlien
+          ease: "power2.out"
+        });
+        svgsVisible = true;
+      }
+    } else if (currentScrollY <= 50 && !svgsVisible) {
+      // Back to top - ensure SVGs are visible
+      gsap.to(['.studio_svg', '.penzlien_svg'], {
+        opacity: 1,
+        y: 0,
+        duration: 0.4,
+        stagger: 0.1,
+        ease: "power2.out"
+      });
+      svgsVisible = true;
+    }
+    
+    lastScrollY = currentScrollY;
+  }; // End of svgScrollHandler function
+  
+  // Add scroll listener
+  window.addEventListener('scroll', svgScrollHandler, { passive: true });
+  svgScrollInitialized = true; // Mark as initialized
+  console.log('✅ SVG scroll animations initialized');
+}
+
+function destroySVGScrollAnimations() {
+  console.log('🧹 Cleaning up SVG scroll animations...');
+  if (svgScrollHandler) {
+    window.removeEventListener('scroll', svgScrollHandler);
+    svgScrollHandler = null;
+  }
+  // Reset all state
+  lastScrollY = 0;
+  svgsVisible = true;
+  svgScrollInitialized = false; // Allow re-initialization
+  console.log('✅ SVG scroll animations cleaned up');
+}
+
+// ================================================================================
+// 🎨 PAGE-SPECIFIC ANIMATIONS
+// ================================================================================
+
+function animateIndexPage() {
+  console.log('📋 Animating index page elements...');
+  
+  const indexItems = document.querySelectorAll('.index_item');
+  
+  if (indexItems.length > 0) {
+    // Set initial state (hidden and slightly below)
+    gsap.set(indexItems, {
+      opacity: 0,
+      y: 20
+    });
+    
+    // Animate in with stagger
+    gsap.to(indexItems, {
+      opacity: 1,
+      y: 0,
+      stagger: 0.02,
+      duration: 0.2,
+      ease: 'power1.out',
+      delay: 0.2
+    });
+    
+    console.log(`✅ Animated ${indexItems.length} index items with stagger`);
+  } else {
+    console.log('ℹ️ No .index_item elements found on this page');
+  }
+  
+  // HOMEPAGE ANIMATIONS - Clean single function call
+  animateHomepageElements('index page view');
+  
+  // CRITICAL: Also initialize scroll animations for SVGs
+  initializeSVGScrollAnimations();
+}
+
+function animateContactPage() {
+  console.log('📧 Animating contact page elements...');
+  
+  // Add contact page specific animations here
+  const contactContent = document.querySelector('.contact-content');
+  if (contactContent) {
+    gsap.from('.contact-content', {
+      y: 30,
+      opacity: 0,
+      duration: 0.6,
+      ease: "power2.out",
+      delay: 0.3
+    });
+  }
+}

@@ -1081,6 +1081,13 @@ function initializeBarba() {
           console.log('🏠 Index page loaded');
           animateIndexPage();
         }
+      },
+      {
+        namespace: 'studio',
+        afterEnter() {
+          console.log('🎨 Studio page loaded');
+          animateIndexPage(); // Uses same animation as index page since it has .index_item elements
+        }
       }
     ]
   });
@@ -2189,19 +2196,19 @@ function animateIndexPage() {
   const indexItems = document.querySelectorAll('.index_item');
   
   if (indexItems.length > 0) {
-    // Set initial state (hidden and slightly below)
+    // Set initial state (hidden and slightly below, matched to project_masonry_item)
     gsap.set(indexItems, {
       opacity: 0,
-      y: 20
+      y: 30  // Increased from 20 to match masonry y position
     });
     
-    // Animate in with stagger
+    // Animate in with stagger (matched to project_masonry_item timing)
     gsap.to(indexItems, {
       opacity: 1,
       y: 0,
-      stagger: 0.02,
-      duration: 0.2,
-      ease: 'power1.out',
+      stagger: 0.1,       // Increased from 0.02 to match masonry stagger timing
+      duration: 0.8,      // Increased from 0.2 to match masonry duration
+      ease: 'power2.out', // Changed from power1.out to match masonry easing
       delay: 0.2
     });
     

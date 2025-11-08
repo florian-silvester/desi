@@ -1,9 +1,12 @@
 console.log('🎨 Animations.js loaded');
 
 // SVGs start hidden via Webflow (opacity: 0), just set the y position
+// COMMENTED OUT - Intro animation disabled
+/*
 gsap.set(['.studio_svg', '.penzlien_svg'], {
   y: 30
 });
+*/
 
 /*
 🎯 QUICK REFERENCE - HOVER ANIMATIONS:
@@ -32,6 +35,14 @@ gsap.set(['.studio_svg', '.penzlien_svg'], {
    • updateCursorLabel(text, scaleDot) - Update cursor text and dot scale
    • testCustomCursor() - Test mousemove listener and basic functionality
    • debugCursorState() - Force cursor visible with red background for debugging
+
+🎯 QUICK REFERENCE - PARALLAX ANIMATIONS:
+   • initializeParallaxAnimations() - Main setup function (auto-runs on page load)
+   • destroyParallaxAnimations() - Cleanup function (auto-runs before page transitions)
+
+🎯 QUICK REFERENCE - INDEX ITEM HOVER ANIMATIONS:
+   • initializeIndexItemHoverAnimations() - Main setup function (auto-runs on page load)
+   • destroyIndexItemHoverAnimations() - Cleanup function (auto-runs before page transitions)
    
 📍 Location: Search for section headers below for specific functionality
 */
@@ -290,6 +301,137 @@ function randomizeMasonryOffsets() {
 }
 
 // ================================================================================
+// 🎢 PARALLAX ANIMATIONS
+// ================================================================================
+
+/**
+ * PARALLAX SCROLL EFFECT FOR MASONRY ITEMS
+ * Adds subtle parallax movement to small masonry items during scroll
+ * Uses GSAP ScrollTrigger for smooth performance
+ */
+let parallaxScrollTriggers = []; // Store ScrollTrigger instances for cleanup
+
+function initializeParallaxAnimations() {
+  try {
+    console.log('🎢 ============================================');
+    console.log('🎢 PARALLAX INITIALIZATION - START');
+    console.log('🎢 ============================================');
+  
+  // Check for GSAP and ScrollTrigger
+  console.log('🔍 Checking for GSAP:', !!window.gsap);
+  console.log('🔍 Checking for ScrollTrigger on window:', !!window.ScrollTrigger);
+  console.log('🔍 Checking for gsap.ScrollTrigger:', !!gsap?.ScrollTrigger);
+  console.log('🔍 What is gsap:', typeof gsap, gsap);
+  console.log('🔍 GSAP plugins:', gsap?.plugins);
+  
+  // Try to access ScrollTrigger from gsap object
+  const ScrollTriggerPlugin = window.ScrollTrigger || gsap?.ScrollTrigger;
+  
+  if (!window.gsap || !ScrollTriggerPlugin) {
+    console.log('❌ GSAP or ScrollTrigger not available for parallax');
+    return;
+  }
+  
+  // Register ScrollTrigger plugin
+  gsap.registerPlugin(ScrollTriggerPlugin);
+  console.log('✅ ScrollTrigger plugin registered with:', ScrollTriggerPlugin);
+  
+  // Disable parallax on touch / small screens (performance + UX)
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const isTouch = matchMedia('(hover: none)').matches;
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  
+  console.log('🔍 Device checks:');
+  console.log('   - isMobile (≤768px):', isMobile);
+  console.log('   - isTouch device:', isTouch);
+  console.log('   - prefersReduced:', prefersReduced);
+  
+  if (isMobile || isTouch || prefersReduced) {
+    console.log('⚠️ Parallax disabled (mobile/touch device or reduced motion preference)');
+    return;
+  }
+  
+  // Target small and medium masonry items for parallax
+  console.log('🔍 Searching for .project_masonry_item[item-style="small"] and [item-style="medium"]...');
+  const smallItems = gsap.utils.toArray('.project_masonry_item[item-style="small"]');
+  const mediumItems = gsap.utils.toArray('.project_masonry_item[item-style="medium"]');
+  const allParallaxItems = [...smallItems, ...mediumItems];
+  
+  console.log(`📦 Found ${smallItems.length} small and ${mediumItems.length} medium masonry items`);
+  
+  if (allParallaxItems.length === 0) {
+    console.log('❌ No small/medium masonry items found for parallax');
+    console.log('🔍 Checking all masonry items on page:');
+    const allItems = document.querySelectorAll('.project_masonry_item');
+    console.log(`   Total masonry items: ${allItems.length}`);
+    allItems.forEach((item, i) => {
+      console.log(`   Item ${i + 1}: item-style="${item.getAttribute('item-style')}"`);
+    });
+    return;
+  }
+  
+  allParallaxItems.forEach((el, i) => {
+    const itemStyle = el.getAttribute('item-style');
+    
+    // More pronounced: small items move more, medium items move less
+    let yPercentStart, yPercentEnd;
+    if (itemStyle === 'small') {
+      yPercentStart = -15;  // Start further up
+      yPercentEnd = 15;     // End further down (30% total range)
+    } else {
+      yPercentStart = -10;  // Medium items: less movement
+      yPercentEnd = 10;     // (20% total range)
+    }
+    
+    console.log(`🎢 Setting up parallax for ${itemStyle} item ${i + 1}/${allParallaxItems.length}:`);
+    console.log(`   - Movement: ${yPercentStart}% to ${yPercentEnd}%`);
+    
+    // Parallax using transform to avoid conflicts with other animations
+    const tl = gsap.fromTo(el,
+      { 
+        yPercent: yPercentStart
+      },
+      {
+        yPercent: yPercentEnd,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: el,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 1,  // Smooth scrubbing with 1 second delay
+          // markers: false  // Disabled - set to true for debugging
+        }
+      }
+    );
+    
+    // Store the ScrollTrigger for cleanup
+    parallaxScrollTriggers.push(tl.scrollTrigger);
+    console.log(`✅ Parallax item ${i + 1} configured`);
+  });
+  
+  console.log('🎢 ============================================');
+  console.log(`✅ Parallax initialized for ${allParallaxItems.length} items (${smallItems.length} small, ${mediumItems.length} medium)`);
+  console.log('🎢 ============================================');
+  
+  } catch (error) {
+    console.error('❌❌❌ ERROR IN initializeParallaxAnimations:', error);
+    console.error('Stack trace:', error.stack);
+  }
+}
+
+function destroyParallaxAnimations() {
+  console.log('🧹 Cleaning up parallax animations...');
+  
+  // Kill all ScrollTrigger instances
+  parallaxScrollTriggers.forEach(trigger => {
+    if (trigger) trigger.kill();
+  });
+  
+  parallaxScrollTriggers = [];
+  console.log('✅ Parallax animations cleaned up');
+}
+
+// ================================================================================
 // 📜 SCROLL-TRIGGERED ANIMATIONS
 // ================================================================================
 
@@ -435,12 +577,18 @@ $(document).ready(function() {
   });
   
   // Initialize components immediately for direct page loads
+  console.log('🚀🚀🚀 STARTING INITIALIZATION TIMEOUT 🚀🚀🚀');
   setTimeout(() => {
+    console.log('⏰⏰⏰ INSIDE TIMEOUT - STARTING INITIALIZATIONS ⏰⏰⏰');
     initializeSliders();
     initializeScrollAnimations();
     initializeProjectHoverAnimations();
+    initializeIndexItemHoverAnimations();
     initializeDetailsPanelAnimations();
     initializeSliderOverviewAnimations();
+    console.log('🔥🔥🔥 ABOUT TO CALL initializeParallaxAnimations() 🔥🔥🔥');
+    initializeParallaxAnimations();
+    console.log('🔥🔥🔥 AFTER CALLING initializeParallaxAnimations() 🔥🔥🔥');
     
     // CRITICAL: Initialize cursor ONCE on page load
     initializeCustomCursor();
@@ -456,9 +604,12 @@ $(document).ready(function() {
     }
     
     // Initialize SVG scroll animations if SVGs exist
+    // COMMENTED OUT - Intro animation disabled
+    /*
     if (document.querySelector('.studio_svg') || document.querySelector('.penzlien_svg')) {
       initializeSVGScrollAnimations();
     }
+    */
   }, 100);
   
   // Initialize Barba after a small delay
@@ -600,6 +751,74 @@ function initializeProjectHoverAnimations() {
 }
 
 // ================================================================================
+// 🎯 INDEX ITEM HOVER ANIMATIONS
+// ================================================================================
+
+/**
+ * CLEANUP FUNCTION FOR INDEX ITEM HOVER ANIMATIONS
+ * Removes all event listeners before page transitions
+ */
+function destroyIndexItemHoverAnimations() {
+  console.log('🧹 [INDEX HOVER CLEANUP] Removing index item hover listeners...');
+  $(document).off('mouseenter.indexHover mouseleave.indexHover', '.index_item');
+  console.log('✅ [INDEX HOVER CLEANUP] Index hover animations cleaned up');
+}
+
+/**
+ * INITIALIZE INDEX ITEM HOVER ANIMATIONS
+ * Fades in .index_left_title_wrap and .index_view_wrap on hover
+ */
+function initializeIndexItemHoverAnimations() {
+  console.log('🎯 [INDEX HOVER INIT] Starting index item hover animations...');
+  
+  // Clean up any existing listeners first
+  destroyIndexItemHoverAnimations();
+  
+  const indexItems = $('.index_item');
+  
+  if (indexItems.length === 0) {
+    console.log('ℹ️ [INDEX HOVER INIT] No .index_item elements found on this page');
+    return;
+  }
+  
+  console.log(`✅ [INDEX HOVER INIT] Found ${indexItems.length} index items - setting up hovers...`);
+  
+  // Mouse enter - fade in elements
+  $(document).on('mouseenter.indexHover', '.index_item', function() {
+    const $leftTitle = $(this).find('.index_left_title_wrap');
+    const $viewWrap = $(this).find('.index_view_wrap');
+    
+    // Kill any existing animations
+    gsap.killTweensOf([$leftTitle, $viewWrap]);
+    
+    // Fade in both elements
+    gsap.to([$leftTitle, $viewWrap], {
+      opacity: 1,
+      duration: 0.3,
+      ease: "power2.out"
+    });
+  });
+  
+  // Mouse leave - fade out elements
+  $(document).on('mouseleave.indexHover', '.index_item', function() {
+    const $leftTitle = $(this).find('.index_left_title_wrap');
+    const $viewWrap = $(this).find('.index_view_wrap');
+    
+    // Kill any existing animations
+    gsap.killTweensOf([$leftTitle, $viewWrap]);
+    
+    // Fade out both elements
+    gsap.to([$leftTitle, $viewWrap], {
+      opacity: 0,
+      duration: 0.2,
+      ease: "power2.out"
+    });
+  });
+  
+  console.log('✅ [INDEX HOVER INIT] Index item hover animations initialized');
+}
+
+// ================================================================================
 // 🎠 GSAP SLIDER SYSTEM
 // ================================================================================
 
@@ -647,11 +866,6 @@ function initializeSliders() {
         width: 100%;
         height: auto;
         display: block;
-      }
-      @media (min-width: 992px) {
-        .swiper-wrapper:not(.is-overview) .swiper-slide {
-          width: 50% !important;
-        }
       }
       /* Hide ghost elements in overview mode - but don't touch their positioning */
       .swiper.overview-active .slider_ghost_clickable {
@@ -719,10 +933,9 @@ function initializeSliders() {
       slides: $slides.length
     });
     
-    // Get responsive settings
-    const isMobile = window.innerWidth < 992;
-    const slidesPerView = isMobile ? 1 : 2;
-    const slideWidth = 100 / slidesPerView;
+    // Get responsive settings - ALWAYS 1 SLIDE PER VIEW
+    const slidesPerView = 1;
+    const slideWidth = 100;
     
     let currentSlide = 0;
     const totalSlides = $slides.length;
@@ -875,17 +1088,13 @@ function initializeSliders() {
     
     // Handle window resize
     function handleResize() {
-      const newIsMobile = window.innerWidth < 992;
-      const newSlidesPerView = newIsMobile ? 1 : 2;
-      const newSlideWidth = 100 / newSlidesPerView;
+      // ALWAYS 1 SLIDE PER VIEW
+      const newSlidesPerView = 1;
+      const newSlideWidth = 100;
       maxSlide = Math.max(0, totalSlides - newSlidesPerView);
       
-      // Update slide widths via CSS
-      if (newIsMobile) {
-        $slides.css('width', '100%');
-      } else {
-        $slides.css('width', '50%');
-      }
+      // Always set slides to 100% width
+      $slides.css('width', '100%');
       
       // Adjust current slide if needed (with looping, just ensure it's within bounds)
       if (currentSlide > maxSlide) {
@@ -896,7 +1105,7 @@ function initializeSliders() {
       const offset = -(currentSlide * newSlideWidth);
       gsap.set($wrapper, { x: offset + '%' });
       
-      console.log(`📐 Slider ${index + 1} resized: ${newSlidesPerView} slides per view (looping enabled)`);
+      console.log(`📐 Slider ${index + 1} resized: ${newSlidesPerView} slide per view (looping enabled)`);
     }
     
     $(window).on('resize.slider' + index, handleResize);
@@ -973,9 +1182,11 @@ function initializeBarba() {
           destroySliders();
           destroyScrollAnimations();
           destroyProjectHoverAnimations();
+          destroyIndexItemHoverAnimations();
           destroyDetailsPanelAnimations();
           destroySliderOverviewAnimations();
-          destroySVGScrollAnimations();
+          destroyParallaxAnimations();
+          // destroySVGScrollAnimations(); // COMMENTED OUT - Intro animation disabled
           
           // IMPORTANT: Only remove hover listeners. The cursor element and
           // its mousemove listener will persist.
@@ -1005,12 +1216,18 @@ function initializeBarba() {
           
           // Initialize hover animations for new page
           initializeProjectHoverAnimations();
+          initializeIndexItemHoverAnimations();
           
           // Initialize details panel animations for new page
           initializeDetailsPanelAnimations();
           
           // Initialize slider overview animations for new page
           initializeSliderOverviewAnimations();
+          
+          // Initialize parallax animations for new page
+          console.log('🔥🔥🔥 [BARBA] ABOUT TO CALL initializeParallaxAnimations() 🔥🔥🔥');
+          initializeParallaxAnimations();
+          console.log('🔥🔥🔥 [BARBA] AFTER CALLING initializeParallaxAnimations() 🔥🔥🔥');
 
           // Re-setup hover listeners for the new page's content
           setupCustomCursorListeners();
@@ -1031,7 +1248,8 @@ function initializeBarba() {
             animateHomepageElements('Barba transition', storedScrollPosition);
             
             // CRITICAL: Also initialize scroll animations for SVGs
-            initializeSVGScrollAnimations();
+            // COMMENTED OUT - SVG scroll animations disabled
+            // initializeSVGScrollAnimations();
           }
 
           // Simple fade in - NO DELAY
@@ -1983,59 +2201,15 @@ function deactivateOverviewMode() {
 
 /**
  * CENTRALIZED HOMEPAGE ANIMATION FUNCTION
- * Handles SVG logo animation + hero wrap height animation
+ * Handles hero wrap height animation (SVG animations disabled)
  * Called from: direct page load, Barba transitions, and index page view
  */
 function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
   console.log(`🎨 Starting homepage animations (${context})...`);
   
-  // Find SVG elements
-  const svgElements = document.querySelectorAll('.studio_svg, .penzlien_svg');
   const heroWrap = document.querySelector('.hero_wrap');
   
-  if (svgElements.length === 0) {
-    console.log(`ℹ️ No SVG elements found (${context})`);
-    return;
-  }
-  
-  // STEP 1: Reset SVGs to initial state (for Barba transitions)
-  console.log(`🔄 Resetting SVGs to initial state (${context})...`);
-  gsap.set(svgElements, {
-    opacity: 0,
-    y: 30
-  });
-  
-  // STEP 2: Animate SVGs - but ONLY if at top of page
-  // Use override scroll position if provided (for Barba transitions)
-  const currentScrollY = overrideScrollY !== null ? overrideScrollY : window.scrollY;
-  const isAtTop = currentScrollY <= 50;
-  console.log(`🔍 Checking scroll position: ${currentScrollY}px (${overrideScrollY !== null ? 'from Barba stored position' : 'from current window.scrollY'})`);
-  
-  if (isAtTop) {
-    // AT TOP: Play entrance animation
-    console.log(`🔝 Page is at top (${currentScrollY}px) - playing SVG entrance animation (${context})`);
-    gsap.to(svgElements, {
-      opacity: 1,
-      y: 0,
-      duration: 0.8,
-      ease: "power2.out",
-      delay: 0.8,
-      stagger: 0.2,
-      onStart: () => console.log(`✨ SVG logos animating in (${context})`),
-      onComplete: () => console.log(`✅ SVG logo animation complete (${context})`)
-    });
-  } else {
-    // NOT AT TOP: Set to hidden state (no entrance animation)
-    console.log(`📍 Page is scrolled down (${currentScrollY}px) - setting SVGs to hidden state (${context})`);
-    gsap.set(svgElements, {
-      opacity: 0,
-      y: 0 // Reset y position but keep hidden
-    });
-    // Update scroll animation state
-    svgsVisible = false;
-  }
-  
-  // STEP 3: Hero wrap - only animate ONCE per session
+  // Hero wrap - only animate ONCE per session
   if (heroWrap) {
     console.log(`🔍 Current hero_wrap height (${context}):`, getComputedStyle(heroWrap).height);
     
@@ -2050,7 +2224,7 @@ function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
           height: '70vh',
           duration: 0.8,
           ease: "power2.out",
-          delay: 1.8, // 0.8s (SVG delay) + 1s = 1.8s total delay
+          delay: 0.8, // Reduced from 1.8s since no SVG animation
           onStart: () => console.log(`✨ Hero wrap animating to 70vh height (${context})`),
           onComplete: () => {
             console.log(`✅ Hero wrap animation complete (${context})`);
@@ -2072,7 +2246,10 @@ function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
  * SCROLL-TRIGGERED SVG ANIMATIONS
  * Fade out SVGs on scroll down (reverse stagger)
  * Fade in SVGs on scroll up (normal stagger)
+ * 
+ * COMMENTED OUT - Intro animation disabled
  */
+/*
 let lastScrollY = 0;
 let svgsVisible = true;
 let svgScrollHandler = null; // Store reference for cleanup
@@ -2167,7 +2344,9 @@ function initializeSVGScrollAnimations() {
   svgScrollInitialized = true; // Mark as initialized
   console.log('✅ SVG scroll animations initialized');
 }
+*/
 
+/*
 function destroySVGScrollAnimations() {
   console.log('🧹 Cleaning up SVG scroll animations...');
   if (svgScrollHandler) {
@@ -2185,6 +2364,7 @@ function destroySVGScrollAnimations() {
   svgScrollInitialized = false; // Allow re-initialization
   console.log('✅ SVG scroll animations cleaned up');
 }
+*/
 
 // ================================================================================
 // 🎨 PAGE-SPECIFIC ANIMATIONS
@@ -2221,7 +2401,8 @@ function animateIndexPage() {
   animateHomepageElements('index page view');
   
   // CRITICAL: Also initialize scroll animations for SVGs
-  initializeSVGScrollAnimations();
+  // COMMENTED OUT - SVG scroll animations disabled
+  // initializeSVGScrollAnimations();
 }
 
 function animateContactPage() {

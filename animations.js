@@ -566,6 +566,11 @@ $(document).ready(function() {
   
   // Track click positions for transform origin effect
   $(document).on('click', 'a, .w-inline-block, [data-wf-page], .clickable_link', function(e) {
+    // Skip if click was on HTML or BODY (likely bubbled up)
+    if (this.tagName === 'HTML' || this.tagName === 'BODY') {
+      return;
+    }
+    
     const rect = this.getBoundingClientRect();
     clickPosition = {
       x: (rect.left + rect.width/2) / window.innerWidth * 100,
@@ -867,6 +872,7 @@ function initializeSliders() {
         height: auto;
         display: block;
       }
+      /* Removed desktop media query - now using 100% width (1 slide) on all screen sizes */
       /* Hide ghost elements in overview mode - but don't touch their positioning */
       .swiper.overview-active .slider_ghost_clickable {
         display: none !important;
@@ -933,9 +939,10 @@ function initializeSliders() {
       slides: $slides.length
     });
     
-    // Get responsive settings - ALWAYS 1 SLIDE PER VIEW
-    const slidesPerView = 1;
-    const slideWidth = 100;
+    // Get responsive settings
+    const isMobile = window.innerWidth < 992;
+    const slidesPerView = 1; // Changed from 2 to 1 - show one slide at a time
+    const slideWidth = 100 / slidesPerView;
     
     let currentSlide = 0;
     const totalSlides = $slides.length;
@@ -1088,13 +1095,17 @@ function initializeSliders() {
     
     // Handle window resize
     function handleResize() {
-      // ALWAYS 1 SLIDE PER VIEW
-      const newSlidesPerView = 1;
-      const newSlideWidth = 100;
+      const newIsMobile = window.innerWidth < 992;
+      const newSlidesPerView = newIsMobile ? 1 : 2;
+      const newSlideWidth = 100 / newSlidesPerView;
       maxSlide = Math.max(0, totalSlides - newSlidesPerView);
       
-      // Always set slides to 100% width
-      $slides.css('width', '100%');
+      // Update slide widths via CSS
+      if (newIsMobile) {
+        $slides.css('width', '100%');
+      } else {
+        $slides.css('width', '50%');
+      }
       
       // Adjust current slide if needed (with looping, just ensure it's within bounds)
       if (currentSlide > maxSlide) {
@@ -1105,7 +1116,7 @@ function initializeSliders() {
       const offset = -(currentSlide * newSlideWidth);
       gsap.set($wrapper, { x: offset + '%' });
       
-      console.log(`📐 Slider ${index + 1} resized: ${newSlidesPerView} slide per view (looping enabled)`);
+      console.log(`📐 Slider ${index + 1} resized: ${newSlidesPerView} slides per view (looping enabled)`);
     }
     
     $(window).on('resize.slider' + index, handleResize);
@@ -1350,19 +1361,9 @@ function animateSliderEntrance() {
 // 🎨 PAGE-SPECIFIC ANIMATIONS
 // ================================================================================
 
-
-  
-
-  
-  // Animate project items with stagger
-  gsap.from('.projects_item', {
-    y: 50,
-    opacity: 0,
-    duration: 0.8,
-    stagger: 0.2,
-    ease: "power2.out",
-    delay: 0.5
-  });
+// Note: .projects_item animation removed - was causing GSAP target not found errors
+// If this animation is needed, it should be moved into animateIndexPage() or another
+// page-specific initialization function with proper element existence checks
   
 // ================================================================================
 // 🎨 page load SVGs  

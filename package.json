@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Development environment for Ilke's Webflow animations",
   "scripts": {
-    "dev": "live-server --port=3000 --open=index.html --cors",
+    "dev": "live-server --port=8080 --open=index.html --cors",
     "start": "npm run dev",
     "webflow:preview": "node webflow-fix-location-field.js",
     "webflow:apply": "node webflow-fix-location-field.js --apply",

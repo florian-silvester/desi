@@ -36,10 +36,6 @@ gsap.set(['.studio_svg', '.penzlien_svg'], {
    • testCustomCursor() - Test mousemove listener and basic functionality
    • debugCursorState() - Force cursor visible with red background for debugging
 
-🎯 QUICK REFERENCE - PARALLAX ANIMATIONS:
-   • initializeParallaxAnimations() - Main setup function (auto-runs on page load)
-   • destroyParallaxAnimations() - Cleanup function (auto-runs before page transitions)
-
 🎯 QUICK REFERENCE - INDEX ITEM HOVER ANIMATIONS:
    • initializeIndexItemHoverAnimations() - Main setup function (auto-runs on page load)
    • destroyIndexItemHoverAnimations() - Cleanup function (auto-runs before page transitions)
@@ -189,6 +185,14 @@ function setupCustomCursorListeners() {
   $(document).on('mouseenter.customCursor', '.swiper-slide', () => updateCursorLabel("Swipe", false));
   $(document).on('mouseleave.customCursor', '.swiper-slide', () => updateCursorLabel("", false));
 
+  // DETAILS WRAP: Show "Close" when hovering over the open details panel
+  $(document).on('mouseenter.customCursor', '.details_wrap', function() {
+    if (detailsPanelState.isOpen) {
+      updateCursorLabel("Close", true);
+    }
+  });
+  $(document).on('mouseleave.customCursor', '.details_wrap', () => updateCursorLabel("", false));
+
   console.log('✅ [CURSOR HOVERS] Hover listeners are ready.');
 }
 
@@ -268,167 +272,6 @@ function initializeCustomCursor() {
   customCursorState.isInitialized = true;
   console.log('🎉 [CURSOR INIT] ===== ONE-TIME CURSOR SETUP COMPLETE! =====');
   console.log('   - Mouse movement tracking is now active permanently.');
-}
-
-// ================================================================================
-// 🎲 MASONRY RANDOMIZER
-// ================================================================================
-
-/**
- * MASONRY VERTICAL OFFSET RANDOMIZER
- * Adds random vertical gaps to small and medium masonry items
- * Needs to run on every page transition since Barba doesn't trigger DOMContentLoaded
- */
-function randomizeMasonryOffsets() {
-  console.log('🎲 Randomizing masonry item vertical offsets...');
-  
-  const gaps = ['0', '5vw', '15vw', '25vw'];
-  const masonryItems = document.querySelectorAll(
-    '.project_masonry_item[item-style="small"],' +
-    '.project_masonry_item[item-style="medium"]'
-  );
-  
-  if (masonryItems.length > 0) {
-    masonryItems.forEach((item, index) => {
-      const gap = gaps[Math.floor(Math.random() * gaps.length)];
-      item.style.marginTop = gap;
-      console.log(`🎲 Item ${index + 1}: Applied ${gap} margin-top`);
-    });
-    console.log(`✅ Applied random offsets to ${masonryItems.length} masonry items`);
-  } else {
-    console.log('ℹ️ No small/medium masonry items found on this page');
-  }
-}
-
-// ================================================================================
-// 🎢 PARALLAX ANIMATIONS
-// ================================================================================
-
-/**
- * PARALLAX SCROLL EFFECT FOR MASONRY ITEMS
- * Adds subtle parallax movement to small masonry items during scroll
- * Uses GSAP ScrollTrigger for smooth performance
- */
-let parallaxScrollTriggers = []; // Store ScrollTrigger instances for cleanup
-
-function initializeParallaxAnimations() {
-  try {
-    console.log('🎢 ============================================');
-    console.log('🎢 PARALLAX INITIALIZATION - START');
-    console.log('🎢 ============================================');
-  
-  // Check for GSAP and ScrollTrigger
-  console.log('🔍 Checking for GSAP:', !!window.gsap);
-  console.log('🔍 Checking for ScrollTrigger on window:', !!window.ScrollTrigger);
-  console.log('🔍 Checking for gsap.ScrollTrigger:', !!gsap?.ScrollTrigger);
-  console.log('🔍 What is gsap:', typeof gsap, gsap);
-  console.log('🔍 GSAP plugins:', gsap?.plugins);
-  
-  // Try to access ScrollTrigger from gsap object
-  const ScrollTriggerPlugin = window.ScrollTrigger || gsap?.ScrollTrigger;
-  
-  if (!window.gsap || !ScrollTriggerPlugin) {
-    console.log('❌ GSAP or ScrollTrigger not available for parallax');
-    return;
-  }
-  
-  // Register ScrollTrigger plugin
-  gsap.registerPlugin(ScrollTriggerPlugin);
-  console.log('✅ ScrollTrigger plugin registered with:', ScrollTriggerPlugin);
-  
-  // Disable parallax on touch / small screens (performance + UX)
-  const isMobile = window.matchMedia('(max-width: 768px)').matches;
-  const isTouch = matchMedia('(hover: none)').matches;
-  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  
-  console.log('🔍 Device checks:');
-  console.log('   - isMobile (≤768px):', isMobile);
-  console.log('   - isTouch device:', isTouch);
-  console.log('   - prefersReduced:', prefersReduced);
-  
-  if (isMobile || isTouch || prefersReduced) {
-    console.log('⚠️ Parallax disabled (mobile/touch device or reduced motion preference)');
-    return;
-  }
-  
-  // Target small and medium masonry items for parallax
-  console.log('🔍 Searching for .project_masonry_item[item-style="small"] and [item-style="medium"]...');
-  const smallItems = gsap.utils.toArray('.project_masonry_item[item-style="small"]');
-  const mediumItems = gsap.utils.toArray('.project_masonry_item[item-style="medium"]');
-  const allParallaxItems = [...smallItems, ...mediumItems];
-  
-  console.log(`📦 Found ${smallItems.length} small and ${mediumItems.length} medium masonry items`);
-  
-  if (allParallaxItems.length === 0) {
-    console.log('❌ No small/medium masonry items found for parallax');
-    console.log('🔍 Checking all masonry items on page:');
-    const allItems = document.querySelectorAll('.project_masonry_item');
-    console.log(`   Total masonry items: ${allItems.length}`);
-    allItems.forEach((item, i) => {
-      console.log(`   Item ${i + 1}: item-style="${item.getAttribute('item-style')}"`);
-    });
-    return;
-  }
-  
-  allParallaxItems.forEach((el, i) => {
-    const itemStyle = el.getAttribute('item-style');
-    
-    // More pronounced: small items move more, medium items move less
-    let yPercentStart, yPercentEnd;
-    if (itemStyle === 'small') {
-      yPercentStart = -15;  // Start further up
-      yPercentEnd = 15;     // End further down (30% total range)
-    } else {
-      yPercentStart = -10;  // Medium items: less movement
-      yPercentEnd = 10;     // (20% total range)
-    }
-    
-    console.log(`🎢 Setting up parallax for ${itemStyle} item ${i + 1}/${allParallaxItems.length}:`);
-    console.log(`   - Movement: ${yPercentStart}% to ${yPercentEnd}%`);
-    
-    // Parallax using transform to avoid conflicts with other animations
-    const tl = gsap.fromTo(el,
-      { 
-        yPercent: yPercentStart
-      },
-      {
-        yPercent: yPercentEnd,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: el,
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: 1,  // Smooth scrubbing with 1 second delay
-          // markers: false  // Disabled - set to true for debugging
-        }
-      }
-    );
-    
-    // Store the ScrollTrigger for cleanup
-    parallaxScrollTriggers.push(tl.scrollTrigger);
-    console.log(`✅ Parallax item ${i + 1} configured`);
-  });
-  
-  console.log('🎢 ============================================');
-  console.log(`✅ Parallax initialized for ${allParallaxItems.length} items (${smallItems.length} small, ${mediumItems.length} medium)`);
-  console.log('🎢 ============================================');
-  
-  } catch (error) {
-    console.error('❌❌❌ ERROR IN initializeParallaxAnimations:', error);
-    console.error('Stack trace:', error.stack);
-  }
-}
-
-function destroyParallaxAnimations() {
-  console.log('🧹 Cleaning up parallax animations...');
-  
-  // Kill all ScrollTrigger instances
-  parallaxScrollTriggers.forEach(trigger => {
-    if (trigger) trigger.kill();
-  });
-  
-  parallaxScrollTriggers = [];
-  console.log('✅ Parallax animations cleaned up');
 }
 
 // ================================================================================
@@ -584,17 +427,12 @@ $(document).ready(function() {
     initializeScrollAnimations();
     initializeProjectHoverAnimations();
     initializeIndexItemHoverAnimations();
+    initializeProjectsItemHoverAnimations();
     initializeDetailsPanelAnimations();
     initializeSliderOverviewAnimations();
-    console.log('🔥🔥🔥 ABOUT TO CALL initializeParallaxAnimations() 🔥🔥🔥');
-    initializeParallaxAnimations();
-    console.log('🔥🔥🔥 AFTER CALLING initializeParallaxAnimations() 🔥🔥🔥');
     
     // CRITICAL: Initialize cursor ONCE on page load
     initializeCustomCursor();
-    
-    // Apply random masonry offsets on initial page load
-    randomizeMasonryOffsets();
     
     // REMOVED DIRECT PAGE LOAD ANIMATION - Let Barba handle it to avoid double animation
     
@@ -816,6 +654,86 @@ function initializeIndexItemHoverAnimations() {
   });
   
   console.log('✅ [INDEX HOVER INIT] Index item hover animations initialized');
+}
+
+// ================================================================================
+// 🎯 PROJECTS ITEM HOVER ANIMATIONS (SLIDE IN)
+// ================================================================================
+
+/**
+ * CLEANUP FUNCTION FOR PROJECTS ITEM HOVER ANIMATIONS
+ * Removes all event listeners before page transitions
+ */
+function destroyProjectsItemHoverAnimations() {
+  console.log('🧹 [PROJECTS HOVER CLEANUP] Removing projects item hover listeners...');
+  $(document).off('mouseenter.projectsItemHover mouseleave.projectsItemHover', '.projects_wrap .projects_item');
+  console.log('✅ [PROJECTS HOVER CLEANUP] Projects item hover animations cleaned up');
+}
+
+/**
+ * INITIALIZE PROJECTS ITEM HOVER ANIMATIONS
+ * Slides .projects_img_wrap from xPercent: 100 to 0 on hover
+ * Reverses on hover out
+ * Only targets .projects_item inside .projects_wrap
+ */
+function initializeProjectsItemHoverAnimations() {
+  console.log('🎯 [PROJECTS HOVER INIT] Starting projects item hover animations...');
+  
+  // Clean up any existing listeners first
+  destroyProjectsItemHoverAnimations();
+  
+  const projectsItems = $('.projects_wrap .projects_item');
+  
+  if (projectsItems.length === 0) {
+    console.log('ℹ️ [PROJECTS HOVER INIT] No .projects_item elements found inside .projects_wrap');
+    return;
+  }
+  
+  console.log(`✅ [PROJECTS HOVER INIT] Found ${projectsItems.length} projects items - setting up hovers...`);
+  
+  // Set initial state - .projects_img_wrap starts offset 100% to the right
+  projectsItems.each(function() {
+    const $imgWrap = $(this).find('.projects_img_wrap');
+    if ($imgWrap.length) {
+      gsap.set($imgWrap, { xPercent: 100 });
+    }
+  });
+  
+  // Mouse enter - slide in from right (fast & energetic)
+  $(document).on('mouseenter.projectsItemHover', '.projects_wrap .projects_item', function() {
+    const $imgWrap = $(this).find('.projects_img_wrap');
+    
+    if ($imgWrap.length) {
+      // Kill any existing animations
+      gsap.killTweensOf($imgWrap);
+      
+      // Slide in to normal position - fast & punchy
+      gsap.to($imgWrap, {
+        xPercent: 0,
+        duration: 0.5,
+        ease: "power2.inOut"
+      });
+    }
+  });
+  
+  // Mouse leave - slide back out to the right (snappy)
+  $(document).on('mouseleave.projectsItemHover', '.projects_wrap .projects_item', function() {
+    const $imgWrap = $(this).find('.projects_img_wrap');
+    
+    if ($imgWrap.length) {
+      // Kill any existing animations
+      gsap.killTweensOf($imgWrap);
+      
+      // Slide back to offset position - quick snap
+      gsap.to($imgWrap, {
+        xPercent: 100,
+        duration: 0.5,
+        ease: "power2.inOut"
+      });
+    }
+  });
+  
+  console.log('✅ [PROJECTS HOVER INIT] Projects item hover animations initialized');
 }
 
 // ================================================================================
@@ -1183,9 +1101,9 @@ function initializeBarba() {
           destroyScrollAnimations();
           destroyProjectHoverAnimations();
           destroyIndexItemHoverAnimations();
+          destroyProjectsItemHoverAnimations();
           destroyDetailsPanelAnimations();
           destroySliderOverviewAnimations();
-          destroyParallaxAnimations();
           // destroySVGScrollAnimations(); // COMMENTED OUT - Intro animation disabled
           
           // IMPORTANT: Only remove hover listeners. The cursor element and
@@ -1217,23 +1135,16 @@ function initializeBarba() {
           // Initialize hover animations for new page
           initializeProjectHoverAnimations();
           initializeIndexItemHoverAnimations();
+          initializeProjectsItemHoverAnimations();
           
           // Initialize details panel animations for new page
           initializeDetailsPanelAnimations();
           
           // Initialize slider overview animations for new page
           initializeSliderOverviewAnimations();
-          
-          // Initialize parallax animations for new page
-          console.log('🔥🔥🔥 [BARBA] ABOUT TO CALL initializeParallaxAnimations() 🔥🔥🔥');
-          initializeParallaxAnimations();
-          console.log('🔥🔥🔥 [BARBA] AFTER CALLING initializeParallaxAnimations() 🔥🔥🔥');
 
           // Re-setup hover listeners for the new page's content
           setupCustomCursorListeners();
-          
-          // Apply random masonry offsets for new page content
-          randomizeMasonryOffsets();
           
           // HOMEPAGE ANIMATIONS - Check if we're entering the homepage
           if (data.next.container.querySelector('.studio_svg') || data.next.container.querySelector('.penzlien_svg')) {
@@ -1719,12 +1630,12 @@ function initializeDetailsPanelAnimations() {
     }
   });
   
-  // STEP 5: Set up click handler for closing when clicking outside
-  console.log('🎨 [DETAILS INIT] Step 5: Setting up outside click handler...');
-  $(document).on('click.detailsPanel', function(e) {
-    // Only close if panel is open and click is outside the details wrap
-    if (detailsPanelState.isOpen && !$(e.target).closest('.details_wrap').length && !$(e.target).is('#Trigger')) {
-      console.log('👆 [DETAILS OUTSIDE] Click detected outside details panel - closing...');
+  // STEP 5: Set up click handler for closing when clicking on details_wrap
+  console.log('🎨 [DETAILS INIT] Step 5: Setting up details_wrap click-to-close handler...');
+  $(document).on('click.detailsPanel', '.details_wrap', function(e) {
+    // Close when clicking anywhere on the details_wrap (but not on the trigger)
+    if (detailsPanelState.isOpen && !$(e.target).is('#Trigger') && !$(e.target).closest('#Trigger').length) {
+      console.log('👆 [DETAILS WRAP] Click detected on details_wrap - closing...');
       closeDetailsPanel();
     }
   });

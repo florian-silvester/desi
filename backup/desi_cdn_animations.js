@@ -1,12 +1,9 @@
 console.log('🎨 Animations.js loaded');
 
 // SVGs start hidden via Webflow (opacity: 0), just set the y position
-// COMMENTED OUT - Intro animation disabled
-/*
 gsap.set(['.studio_svg', '.penzlien_svg'], {
   y: 30
 });
-*/
 
 /*
 🎯 QUICK REFERENCE - HOVER ANIMATIONS:
@@ -35,10 +32,6 @@ gsap.set(['.studio_svg', '.penzlien_svg'], {
    • updateCursorLabel(text, scaleDot) - Update cursor text and dot scale
    • testCustomCursor() - Test mousemove listener and basic functionality
    • debugCursorState() - Force cursor visible with red background for debugging
-
-🎯 QUICK REFERENCE - INDEX ITEM HOVER ANIMATIONS:
-   • initializeIndexItemHoverAnimations() - Main setup function (auto-runs on page load)
-   • destroyIndexItemHoverAnimations() - Cleanup function (auto-runs before page transitions)
    
 📍 Location: Search for section headers below for specific functionality
 */
@@ -409,11 +402,6 @@ $(document).ready(function() {
   
   // Track click positions for transform origin effect
   $(document).on('click', 'a, .w-inline-block, [data-wf-page], .clickable_link', function(e) {
-    // Skip if click was on HTML or BODY (likely bubbled up)
-    if (this.tagName === 'HTML' || this.tagName === 'BODY') {
-      return;
-    }
-    
     const rect = this.getBoundingClientRect();
     clickPosition = {
       x: (rect.left + rect.width/2) / window.innerWidth * 100,
@@ -425,13 +413,10 @@ $(document).ready(function() {
   });
   
   // Initialize components immediately for direct page loads
-  console.log('🚀🚀🚀 STARTING INITIALIZATION TIMEOUT 🚀🚀🚀');
   setTimeout(() => {
-    console.log('⏰⏰⏰ INSIDE TIMEOUT - STARTING INITIALIZATIONS ⏰⏰⏰');
     initializeSliders();
     initializeScrollAnimations();
     initializeProjectHoverAnimations();
-    initializeIndexItemHoverAnimations();
     initializeProjectsItemHoverAnimations();
     initializeDetailsPanelAnimations();
     initializeSliderOverviewAnimations();
@@ -447,12 +432,9 @@ $(document).ready(function() {
     }
     
     // Initialize SVG scroll animations if SVGs exist
-    // COMMENTED OUT - Intro animation disabled
-    /*
     if (document.querySelector('.studio_svg') || document.querySelector('.penzlien_svg')) {
       initializeSVGScrollAnimations();
     }
-    */
   }, 100);
   
   // Initialize Barba after a small delay
@@ -594,74 +576,6 @@ function initializeProjectHoverAnimations() {
 }
 
 // ================================================================================
-// 🎯 INDEX ITEM HOVER ANIMATIONS
-// ================================================================================
-
-/**
- * CLEANUP FUNCTION FOR INDEX ITEM HOVER ANIMATIONS
- * Removes all event listeners before page transitions
- */
-function destroyIndexItemHoverAnimations() {
-  console.log('🧹 [INDEX HOVER CLEANUP] Removing index item hover listeners...');
-  $(document).off('mouseenter.indexHover mouseleave.indexHover', '.index_item');
-  console.log('✅ [INDEX HOVER CLEANUP] Index hover animations cleaned up');
-}
-
-/**
- * INITIALIZE INDEX ITEM HOVER ANIMATIONS
- * Fades in .index_left_title_wrap and .index_view_wrap on hover
- */
-function initializeIndexItemHoverAnimations() {
-  console.log('🎯 [INDEX HOVER INIT] Starting index item hover animations...');
-  
-  // Clean up any existing listeners first
-  destroyIndexItemHoverAnimations();
-  
-  const indexItems = $('.index_item');
-  
-  if (indexItems.length === 0) {
-    console.log('ℹ️ [INDEX HOVER INIT] No .index_item elements found on this page');
-    return;
-  }
-  
-  console.log(`✅ [INDEX HOVER INIT] Found ${indexItems.length} index items - setting up hovers...`);
-  
-  // Mouse enter - fade in elements
-  $(document).on('mouseenter.indexHover', '.index_item', function() {
-    const $leftTitle = $(this).find('.index_left_title_wrap');
-    const $viewWrap = $(this).find('.index_view_wrap');
-    
-    // Kill any existing animations
-    gsap.killTweensOf([$leftTitle, $viewWrap]);
-    
-    // Fade in both elements
-    gsap.to([$leftTitle, $viewWrap], {
-      opacity: 1,
-      duration: 0.3,
-      ease: "power2.out"
-    });
-  });
-  
-  // Mouse leave - fade out elements
-  $(document).on('mouseleave.indexHover', '.index_item', function() {
-    const $leftTitle = $(this).find('.index_left_title_wrap');
-    const $viewWrap = $(this).find('.index_view_wrap');
-    
-    // Kill any existing animations
-    gsap.killTweensOf([$leftTitle, $viewWrap]);
-    
-    // Fade out both elements
-    gsap.to([$leftTitle, $viewWrap], {
-      opacity: 0,
-      duration: 0.2,
-      ease: "power2.out"
-    });
-  });
-  
-  console.log('✅ [INDEX HOVER INIT] Index item hover animations initialized');
-}
-
-// ================================================================================
 // 🎯 PROJECTS ITEM HOVER ANIMATIONS (SLIDE IN)
 // ================================================================================
 
@@ -696,11 +610,11 @@ function initializeProjectsItemHoverAnimations() {
   
   console.log(`✅ [PROJECTS HOVER INIT] Found ${projectsItems.length} projects items - setting up hovers...`);
   
-  // Set initial state - .projects_img_wrap starts offset 101% to the right (extra 1% hides border)
+  // Set initial state - .projects_img_wrap starts offset 100% to the right
   projectsItems.each(function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
     if ($imgWrap.length) {
-      gsap.set($imgWrap, { xPercent: 101 });
+      gsap.set($imgWrap, { xPercent: 100 });
     }
   });
   
@@ -729,9 +643,9 @@ function initializeProjectsItemHoverAnimations() {
       // Kill any existing animations
       gsap.killTweensOf($imgWrap);
       
-      // Slide back to offset position - quick snap (101% hides border)
+      // Slide back to offset position - quick snap
       gsap.to($imgWrap, {
-        xPercent: 101,
+        xPercent: 100,
         duration: 0.5,
         ease: "power2.inOut"
       });
@@ -790,7 +704,11 @@ function initializeSliders() {
         height: auto;
         display: block;
       }
-      /* Removed desktop media query - now using 100% width (1 slide) on all screen sizes */
+      @media (min-width: 992px) {
+        .swiper-wrapper:not(.is-overview) .swiper-slide {
+          width: 50% !important;
+        }
+      }
       /* Hide ghost elements in overview mode - but don't touch their positioning */
       .swiper.overview-active .slider_ghost_clickable {
         display: none !important;
@@ -859,7 +777,7 @@ function initializeSliders() {
     
     // Get responsive settings
     const isMobile = window.innerWidth < 992;
-    const slidesPerView = 1; // Changed from 2 to 1 - show one slide at a time
+    const slidesPerView = isMobile ? 1 : 2;
     const slideWidth = 100 / slidesPerView;
     
     let currentSlide = 0;
@@ -1111,11 +1029,10 @@ function initializeBarba() {
           destroySliders();
           destroyScrollAnimations();
           destroyProjectHoverAnimations();
-          destroyIndexItemHoverAnimations();
           destroyProjectsItemHoverAnimations();
           destroyDetailsPanelAnimations();
           destroySliderOverviewAnimations();
-          // destroySVGScrollAnimations(); // COMMENTED OUT - Intro animation disabled
+          destroySVGScrollAnimations();
           
           // IMPORTANT: Only remove hover listeners. The cursor element and
           // its mousemove listener will persist.
@@ -1145,7 +1062,6 @@ function initializeBarba() {
           
           // Initialize hover animations for new page
           initializeProjectHoverAnimations();
-          initializeIndexItemHoverAnimations();
           initializeProjectsItemHoverAnimations();
           
           // Initialize details panel animations for new page
@@ -1170,8 +1086,7 @@ function initializeBarba() {
             animateHomepageElements('Barba transition', storedScrollPosition);
             
             // CRITICAL: Also initialize scroll animations for SVGs
-            // COMMENTED OUT - SVG scroll animations disabled
-            // initializeSVGScrollAnimations();
+            initializeSVGScrollAnimations();
           }
 
           // Simple fade in - NO DELAY
@@ -1272,9 +1187,19 @@ function animateSliderEntrance() {
 // 🎨 PAGE-SPECIFIC ANIMATIONS
 // ================================================================================
 
-// Note: .projects_item animation removed - was causing GSAP target not found errors
-// If this animation is needed, it should be moved into animateIndexPage() or another
-// page-specific initialization function with proper element existence checks
+
+  
+
+  
+  // Animate project items with stagger
+  gsap.from('.projects_item', {
+    y: 50,
+    opacity: 0,
+    duration: 0.8,
+    stagger: 0.2,
+    ease: "power2.out",
+    delay: 0.5
+  });
   
 // ================================================================================
 // 🎨 page load SVGs  
@@ -2113,15 +2038,59 @@ function deactivateOverviewMode() {
 
 /**
  * CENTRALIZED HOMEPAGE ANIMATION FUNCTION
- * Handles hero wrap height animation (SVG animations disabled)
+ * Handles SVG logo animation + hero wrap height animation
  * Called from: direct page load, Barba transitions, and index page view
  */
 function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
   console.log(`🎨 Starting homepage animations (${context})...`);
   
+  // Find SVG elements
+  const svgElements = document.querySelectorAll('.studio_svg, .penzlien_svg');
   const heroWrap = document.querySelector('.hero_wrap');
   
-  // Hero wrap - only animate ONCE per session
+  if (svgElements.length === 0) {
+    console.log(`ℹ️ No SVG elements found (${context})`);
+    return;
+  }
+  
+  // STEP 1: Reset SVGs to initial state (for Barba transitions)
+  console.log(`🔄 Resetting SVGs to initial state (${context})...`);
+  gsap.set(svgElements, {
+    opacity: 0,
+    y: 30
+  });
+  
+  // STEP 2: Animate SVGs - but ONLY if at top of page
+  // Use override scroll position if provided (for Barba transitions)
+  const currentScrollY = overrideScrollY !== null ? overrideScrollY : window.scrollY;
+  const isAtTop = currentScrollY <= 50;
+  console.log(`🔍 Checking scroll position: ${currentScrollY}px (${overrideScrollY !== null ? 'from Barba stored position' : 'from current window.scrollY'})`);
+  
+  if (isAtTop) {
+    // AT TOP: Play entrance animation
+    console.log(`🔝 Page is at top (${currentScrollY}px) - playing SVG entrance animation (${context})`);
+    gsap.to(svgElements, {
+      opacity: 1,
+      y: 0,
+      duration: 0.8,
+      ease: "power2.out",
+      delay: 0.8,
+      stagger: 0.2,
+      onStart: () => console.log(`✨ SVG logos animating in (${context})`),
+      onComplete: () => console.log(`✅ SVG logo animation complete (${context})`)
+    });
+  } else {
+    // NOT AT TOP: Set to hidden state (no entrance animation)
+    console.log(`📍 Page is scrolled down (${currentScrollY}px) - setting SVGs to hidden state (${context})`);
+    gsap.set(svgElements, {
+      opacity: 0,
+      y: 0 // Reset y position but keep hidden
+    });
+    // Update scroll animation state
+    svgsVisible = false;
+  }
+  
+  // STEP 3: Hero wrap - only animate ONCE per session
   if (heroWrap) {
     console.log(`🔍 Current hero_wrap height (${context}):`, getComputedStyle(heroWrap).height);
     
@@ -2136,7 +2105,7 @@ function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
           height: '70vh',
           duration: 0.8,
           ease: "power2.out",
-          delay: 0.8, // Reduced from 1.8s since no SVG animation
+          delay: 1.8, // 0.8s (SVG delay) + 1s = 1.8s total delay
           onStart: () => console.log(`✨ Hero wrap animating to 70vh height (${context})`),
           onComplete: () => {
             console.log(`✅ Hero wrap animation complete (${context})`);
@@ -2158,10 +2127,7 @@ function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
  * SCROLL-TRIGGERED SVG ANIMATIONS
  * Fade out SVGs on scroll down (reverse stagger)
  * Fade in SVGs on scroll up (normal stagger)
- * 
- * COMMENTED OUT - Intro animation disabled
  */
-/*
 let lastScrollY = 0;
 let svgsVisible = true;
 let svgScrollHandler = null; // Store reference for cleanup
@@ -2256,9 +2222,7 @@ function initializeSVGScrollAnimations() {
   svgScrollInitialized = true; // Mark as initialized
   console.log('✅ SVG scroll animations initialized');
 }
-*/
 
-/*
 function destroySVGScrollAnimations() {
   console.log('🧹 Cleaning up SVG scroll animations...');
   if (svgScrollHandler) {
@@ -2276,7 +2240,6 @@ function destroySVGScrollAnimations() {
   svgScrollInitialized = false; // Allow re-initialization
   console.log('✅ SVG scroll animations cleaned up');
 }
-*/
 
 // ================================================================================
 // 🎨 PAGE-SPECIFIC ANIMATIONS
@@ -2313,8 +2276,7 @@ function animateIndexPage() {
   animateHomepageElements('index page view');
   
   // CRITICAL: Also initialize scroll animations for SVGs
-  // COMMENTED OUT - SVG scroll animations disabled
-  // initializeSVGScrollAnimations();
+  initializeSVGScrollAnimations();
 }
 
 function animateContactPage() {

@@ -78,8 +78,7 @@ let heroAnimationPlayed = false;
 let customCursorState = {
   isInitialized: false,
   cursor: null,
-  labelText: null,
-  labelDot: null
+  labelText: null
 };
 
 /**
@@ -91,7 +90,7 @@ function destroyCustomCursor() {
   console.log('🧹 [CURSOR CLEANUP] Full cursor teardown...');
   document.removeEventListener('mousemove', handleCursorMove);
   $(document).off('mouseenter.customCursor mouseleave.customCursor');
-  customCursorState = { isInitialized: false, cursor: null, labelText: null, labelDot: null };
+  customCursorState = { isInitialized: false, cursor: null, labelText: null };
   console.log('✅ [CURSOR CLEANUP] Cursor completely destroyed.');
 }
 
@@ -105,85 +104,44 @@ function setupCustomCursorListeners() {
   // Clean up any old hover listeners first
   $(document).off('mouseenter.customCursor mouseleave.customCursor');
 
-  // PROJECT LINKS: Show dynamic location from CMS and scale dot
+  // PROJECT LINKS: Always show "View" and scale dot
   $(document).on('mouseenter.customCursor', '.project_link', function() {
-    // DEBUG: Log the complete structure to help identify Location field placement
-    console.log('🔍 [CURSOR DEBUG] Project link structure:', $(this)[0]);
-    console.log('🔍 [CURSOR DEBUG] Parent project container:', $(this).closest('.project_masonry_item, .projects_item')[0]);
-    
-    let locationText = "View"; // Fallback text
-    const $projectContainer = $(this).closest('.project_masonry_item, .projects_item');
-    
-    // Method 1: Look for "Location" field by exact class name (most likely in Webflow)
-    const $locationByClass = $projectContainer.find('.location, .Location, .project-location');
-    console.log('🔍 [CURSOR DEBUG] Found by class (.location, .Location):', $locationByClass.length, $locationByClass.text());
-    
-    // Method 2: Look for Location in any text element or div within project
-    const $allTextElements = $projectContainer.find('*').filter(function() {
-      const text = $(this).text().trim();
-      return text.length > 0 && text.length < 50; // Reasonable location text length
-    });
-    console.log('🔍 [CURSOR DEBUG] All text elements in project:', $allTextElements.length);
-    $allTextElements.each(function(i) {
-      if (i < 5) { // Log first 5 text elements
-        console.log(`   Text ${i + 1}:`, $(this).text().trim(), '| Class:', $(this).attr('class'));
-      }
-    });
-    
-    // Method 3: Look for data attributes
-    const dataLocation = $(this).attr('data-location') || $projectContainer.attr('data-location');
-    console.log('🔍 [CURSOR DEBUG] Data-location attribute:', dataLocation);
-    
-    // Method 4: Try to find any element containing location-like text
-    const $locationElements = $projectContainer.find('*').filter(function() {
-      const classes = $(this).attr('class') || '';
-      return classes.toLowerCase().includes('location') || 
-             classes.toLowerCase().includes('city') ||
-             classes.toLowerCase().includes('place');
-    });
-    console.log('🔍 [CURSOR DEBUG] Elements with location-related classes:', $locationElements.length);
-    $locationElements.each(function(i) {
-      console.log(`   Location element ${i + 1}:`, $(this).text().trim(), '| Class:', $(this).attr('class'));
-    });
-    
-         // Get the FULL location text from any element that contains it
-     let foundLocationText = "";
-     
-     // Check all text elements for location content
-     $allTextElements.each(function() {
-       const fullText = $(this).text().trim();
-       // If text contains reasonable location-like content, use it as-is
-       if (fullText.length > 2 && fullText.length < 100) {
-         foundLocationText = fullText;
-         console.log(`🎯 [CURSOR DEBUG] Found location text: "${fullText}"`);
-         return false; // Use the first reasonable text found
-       }
-     });
-     
-     // Use the location data methods or the found text
-     const classLocation = $locationByClass.first().text().trim();
-     const dataLocationText = dataLocation;
-     const locationElementText = $locationElements.first().text().trim();
-     
-     // Use the first non-empty location found - FULL TEXT AS-IS
-     locationText = dataLocationText || classLocation || locationElementText || foundLocationText || "View";
-    
-    console.log(`🎯 [CURSOR RESULT] Final location text: "${locationText}"`);
-    updateCursorLabel(locationText, true);
+    updateCursorLabel("View", true);
   });
   $(document).on('mouseleave.customCursor', '.project_link', () => updateCursorLabel("", false));
 
   // NAVIGATION ITEMS: Scale dot, no text
-  $(document).on('mouseenter.customCursor', '.nav_link', () => updateCursorLabel("", true));
-  $(document).on('mouseleave.customCursor', '.nav_link', () => updateCursorLabel("", false));
+  $(document).on('mouseenter.customCursor', '.nav_link, .footer_link', () => updateCursorLabel("", true));
+  $(document).on('mouseleave.customCursor', '.nav_link, .footer_link', () => updateCursorLabel("", false));
   
-  // Add other hover listeners...
-  $(document).on('mouseenter.customCursor', '#bw', () => updateCursorLabel("Previous", false));
-  $(document).on('mouseleave.customCursor', '#bw', () => updateCursorLabel("", false));
-  $(document).on('mouseenter.customCursor', '#ffwd', () => updateCursorLabel("Next", false));
-  $(document).on('mouseleave.customCursor', '#ffwd', () => updateCursorLabel("", false));
-  $(document).on('mouseenter.customCursor', '.swiper-slide', () => updateCursorLabel("Swipe", false));
-  $(document).on('mouseleave.customCursor', '.swiper-slide', () => updateCursorLabel("", false));
+  // SLIDER NAVIGATION: Show current slide count (e.g. "1 / 11")
+  // Hide in overview mode
+  function getSlideCountLabel() {
+    // Don't show count in overview mode
+    if (sliderOverviewState.isOverviewMode) {
+      return "";
+    }
+    if (sliderInstances.length > 0) {
+      const slider = sliderInstances[0];
+      const current = slider.getCurrentSlide() + 1; // 1-based for display
+      const total = slider.slides.length;
+      return `${current} / ${total}`;
+    }
+    return "";
+  }
+  
+  // Update cursor on hover
+  $(document).on('mouseenter.customCursor', '#bw, #ffwd, .swiper-slide', function() {
+    updateCursorLabel(getSlideCountLabel(), true);
+  });
+  $(document).on('mouseleave.customCursor', '#bw, #ffwd, .swiper-slide', () => updateCursorLabel("", false));
+  
+  // Update cursor after clicking nav buttons (with small delay for slide change)
+  $(document).on('click.customCursor', '#bw, #ffwd', function() {
+    setTimeout(() => {
+      updateCursorLabel(getSlideCountLabel(), true);
+    }, 50);
+  });
 
   // DETAILS WRAP: Show "Close" when hovering over the open details panel
   $(document).on('mouseenter.customCursor', '.details_wrap', function() {
@@ -192,6 +150,39 @@ function setupCustomCursorListeners() {
     }
   });
   $(document).on('mouseleave.customCursor', '.details_wrap', () => updateCursorLabel("", false));
+
+  // PROJECTS WRAP: Hide label text inside projects list
+  $(document).on('mouseenter.customCursor', '.projects_wrap', () => updateCursorLabel("", false));
+
+  // SLIDER PAGE: Show "Close" when OUTSIDE .slider_ghost_wrap (the far left/right margins)
+  $(document).on('mouseenter.sliderClose', '.slider_wrap', function(e) {
+    // Only trigger when entering slider_wrap but NOT on ghost_wrap or its children
+    const $target = $(e.target);
+    if ($target.closest('.slider_ghost_wrap').length === 0 && !sliderOverviewState.isOverviewMode) {
+      updateCursorLabel("Close", true);
+    }
+  });
+  
+  $(document).on('mousemove.sliderClose', '.slider_wrap', function(e) {
+    if (sliderOverviewState.isOverviewMode) return;
+    
+    const $target = $(e.target);
+    // If we're directly on slider_wrap (not inside ghost_wrap), show Close
+    if ($target.closest('.slider_ghost_wrap').length === 0) {
+      updateCursorLabel("Close", true);
+    }
+  });
+  
+  $(document).on('click.sliderClose', '.slider_wrap', function(e) {
+    if (sliderOverviewState.isOverviewMode) return;
+    
+    const $target = $(e.target);
+    // If clicking on slider_wrap but NOT inside ghost_wrap, go back
+    if ($target.closest('.slider_ghost_wrap').length === 0) {
+      console.log('⬅️ [SLIDER CLOSE] Clicking margin - navigating back...');
+      history.back();
+    }
+  });
 
   console.log('✅ [CURSOR HOVERS] Hover listeners are ready.');
 }
@@ -214,14 +205,27 @@ function handleCursorMove(event) {
 
 /**
  * UPDATE CURSOR LABEL FUNCTION
- * Changes the cursor text and optionally scales the dot
+ * Changes the cursor text and scales cursor
+ * Default: cursor is small (0.5), on hover grows to normal (1.0)
+ * Counter-scales the text so it stays the same size
  */
-function updateCursorLabel(text, scaleDot = false) {
-  if (customCursorState.labelText && customCursorState.labelDot) {
+function updateCursorLabel(text, isHovering = false) {
+  if (customCursorState.cursor && customCursorState.labelText) {
     customCursorState.labelText.textContent = text || '';
-    gsap.to(customCursorState.labelDot, {
-      scale: scaleDot ? 1.30 : 1,
-      duration: 0.1,
+    
+    // Default small (0.5), grow to normal (1.0) on hover
+    const cursorScale = isHovering ? 1 : 0.5;
+    const textScale = isHovering ? 1 : 2; // Counter-scale: when cursor is 0.5, text is 2x to stay same size
+    
+    gsap.to(customCursorState.cursor, {
+      scale: cursorScale,
+      duration: 0.15,
+      ease: 'power2.out'
+    });
+    
+    gsap.to(customCursorState.labelText, {
+      scale: textScale,
+      duration: 0.15,
       ease: 'power2.out'
     });
   }
@@ -241,9 +245,8 @@ function initializeCustomCursor() {
   
   const cursor = document.querySelector('.projects_mouse_label');
   const labelText = cursor ? cursor.querySelector('.label_text') : null;
-  const labelDot = cursor ? cursor.querySelector('.label_dot') : null;
   
-  if (!cursor || !labelText || !labelDot) {
+  if (!cursor || !labelText) {
     console.warn('❌ [CURSOR INIT] Cursor elements not found. Aborting.');
     return;
   }
@@ -251,13 +254,19 @@ function initializeCustomCursor() {
   // Store references ONCE
   customCursorState.cursor = cursor;
   customCursorState.labelText = labelText;
-  customCursorState.labelDot = labelDot;
   
   // Set initial position and state to prevent cursor appearing at (0,0)
+  // Start small (0.5 scale) - grows to 1.0 on hover
   gsap.set(cursor, {
     x: -100, // Start off-screen
     y: -100,
-    opacity: 0 // Start invisible until first mouse movement
+    opacity: 0, // Start invisible until first mouse movement
+    scale: 0.5 // Default small size
+  });
+  
+  // Counter-scale text so it appears normal size when cursor is small
+  gsap.set(labelText, {
+    scale: 2
   });
   
   // Clear any existing text
@@ -407,6 +416,13 @@ function initializeScrollAnimations() {
 $(document).ready(function() {
   console.log('📱 DOM ready - animations.js connected to Webflow');
   
+  // Back button - navigate to previous page
+  $(document).on('click', '#is-back', function(e) {
+    e.preventDefault();
+    console.log('⬅️ [BACK] Navigating to previous page...');
+    history.back();
+  });
+  
   // Track click positions for transform origin effect
   $(document).on('click', 'a, .w-inline-block, [data-wf-page], .clickable_link', function(e) {
     // Skip if click was on HTML or BODY (likely bubbled up)
@@ -433,8 +449,13 @@ $(document).ready(function() {
     initializeProjectHoverAnimations();
     initializeIndexItemHoverAnimations();
     initializeProjectsItemHoverAnimations();
+    initializeThumbsProjectsListHoverAnimations();
     initializeDetailsPanelAnimations();
     initializeSliderOverviewAnimations();
+    
+    // Animate sections on page load with stagger
+    animateThumbsSection();
+    animateProjectsLayout();
     
     // CRITICAL: Initialize cursor ONCE on page load
     initializeCustomCursor();
@@ -662,6 +683,73 @@ function initializeIndexItemHoverAnimations() {
 }
 
 // ================================================================================
+// 🎯 THUMBS PROJECTS LIST HOVER ANIMATIONS (SCALE)
+// ================================================================================
+
+/**
+ * CLEANUP FUNCTION FOR THUMBS PROJECTS LIST HOVER ANIMATIONS
+ * Removes all event listeners before page transitions
+ */
+function destroyThumbsProjectsListHoverAnimations() {
+  console.log('🧹 [THUMBS LIST CLEANUP] Removing thumbs projects list hover listeners...');
+  $(document).off('mouseenter.thumbsListHover mouseleave.thumbsListHover', '.thumbs_id_wrap .projects_list .projects_item');
+  console.log('✅ [THUMBS LIST CLEANUP] Thumbs projects list hover animations cleaned up');
+}
+
+/**
+ * INITIALIZE THUMBS PROJECTS LIST HOVER ANIMATIONS
+ * Scales .projects_img_wrap to 102% on hover
+ * ONLY targets .projects_item inside .projects_list inside .thumbs_id_wrap
+ */
+function initializeThumbsProjectsListHoverAnimations() {
+  console.log('🎯 [THUMBS LIST HOVER] Starting thumbs projects list hover animations...');
+  
+  // Clean up any existing listeners first
+  destroyThumbsProjectsListHoverAnimations();
+  
+  const projectsItems = $('.thumbs_id_wrap .projects_list .projects_item');
+  
+  if (projectsItems.length === 0) {
+    console.log('ℹ️ [THUMBS LIST HOVER] No .projects_item elements found inside .thumbs_id_wrap .projects_list');
+    return;
+  }
+  
+  console.log(`✅ [THUMBS LIST HOVER] Found ${projectsItems.length} projects items - setting up scale hovers...`);
+  
+  // Mouse enter - scale up
+  $(document).on('mouseenter.thumbsListHover', '.thumbs_id_wrap .projects_list .projects_item', function() {
+    const $imgWrap = $(this).find('.projects_img_wrap');
+    
+    if ($imgWrap.length) {
+      gsap.killTweensOf($imgWrap);
+      
+      gsap.to($imgWrap, {
+        scale: 1.02,
+        duration: 0.3,
+        ease: "power2.out"
+      });
+    }
+  });
+  
+  // Mouse leave - scale back to normal
+  $(document).on('mouseleave.thumbsListHover', '.thumbs_id_wrap .projects_list .projects_item', function() {
+    const $imgWrap = $(this).find('.projects_img_wrap');
+    
+    if ($imgWrap.length) {
+      gsap.killTweensOf($imgWrap);
+      
+      gsap.to($imgWrap, {
+        scale: 1,
+        duration: 0.3,
+        ease: "power2.out"
+      });
+    }
+  });
+  
+  console.log('✅ [THUMBS LIST HOVER] Thumbs projects list hover animations initialized');
+}
+
+// ================================================================================
 // 🎯 PROJECTS ITEM HOVER ANIMATIONS (SLIDE IN)
 // ================================================================================
 
@@ -680,6 +768,7 @@ function destroyProjectsItemHoverAnimations() {
  * Slides .projects_img_wrap from xPercent: 100 to 0 on hover
  * Reverses on hover out
  * Only targets .projects_item inside .projects_wrap
+ * Only on desktop (992px+) - smaller screens show image always visible
  */
 function initializeProjectsItemHoverAnimations() {
   console.log('🎯 [PROJECTS HOVER INIT] Starting projects item hover animations...');
@@ -694,46 +783,60 @@ function initializeProjectsItemHoverAnimations() {
     return;
   }
   
-  console.log(`✅ [PROJECTS HOVER INIT] Found ${projectsItems.length} projects items - setting up hovers...`);
+  // Check if desktop (992px+)
+  const isDesktop = window.innerWidth >= 992;
   
-  // Set initial state - .projects_img_wrap starts offset 101% to the right (extra 1% hides border)
+  if (!isDesktop) {
+    console.log('📱 [PROJECTS HOVER INIT] Mobile/tablet detected - keeping images visible, no hover animation');
+    // Ensure images are visible on mobile/tablet
+    projectsItems.each(function() {
+      const $imgWrap = $(this).find('.projects_img_wrap');
+      if ($imgWrap.length) {
+        gsap.set($imgWrap, { xPercent: 0 });
+      }
+    });
+    return;
+  }
+  
+  console.log(`✅ [PROJECTS HOVER INIT] Desktop detected - Found ${projectsItems.length} projects items - setting up hovers...`);
+  
+  // Set initial state - .projects_img_wrap starts offset -101% to the left (extra 1% hides border)
   projectsItems.each(function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
     if ($imgWrap.length) {
-      gsap.set($imgWrap, { xPercent: 101 });
+      gsap.set($imgWrap, { xPercent: -101 });
     }
   });
   
-  // Mouse enter - slide in from right (fast & energetic)
+  // Mouse enter - slide in from right (fast & snappy)
   $(document).on('mouseenter.projectsItemHover', '.projects_wrap .projects_item', function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
     
     if ($imgWrap.length) {
-      // Kill any existing animations
+      // Kill any existing animations for responsive hover-in
       gsap.killTweensOf($imgWrap);
       
-      // Slide in to normal position - fast & punchy
+      // Slide in to normal position - instant snap
       gsap.to($imgWrap, {
         xPercent: 0,
-        duration: 0.5,
-        ease: "power2.inOut"
+        duration: 0.08,
+        ease: "power2.out"
       });
     }
   });
   
-  // Mouse leave - slide back out to the right (snappy)
+  // Mouse leave - slide back out to the right (waits for hover-in to complete)
   $(document).on('mouseleave.projectsItemHover', '.projects_wrap .projects_item', function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
     
     if ($imgWrap.length) {
-      // Kill any existing animations
-      gsap.killTweensOf($imgWrap);
-      
-      // Slide back to offset position - quick snap (101% hides border)
+      // Don't kill - let hover-in complete first, then animate out
+      // Slide back to left offset position (-101% hides border)
       gsap.to($imgWrap, {
-        xPercent: 101,
+        xPercent: -101,
         duration: 0.5,
-        ease: "power2.inOut"
+        ease: "power2.inOut",
+        delay: 0.1  // Small delay ensures hover-in finishes
       });
     }
   });
@@ -1113,6 +1216,7 @@ function initializeBarba() {
           destroyProjectHoverAnimations();
           destroyIndexItemHoverAnimations();
           destroyProjectsItemHoverAnimations();
+          destroyThumbsProjectsListHoverAnimations();
           destroyDetailsPanelAnimations();
           destroySliderOverviewAnimations();
           // destroySVGScrollAnimations(); // COMMENTED OUT - Intro animation disabled
@@ -1147,6 +1251,11 @@ function initializeBarba() {
           initializeProjectHoverAnimations();
           initializeIndexItemHoverAnimations();
           initializeProjectsItemHoverAnimations();
+          initializeThumbsProjectsListHoverAnimations();
+          
+          // Animate sections on page transition
+          animateThumbsSection();
+          animateProjectsLayout();
           
           // Initialize details panel animations for new page
           initializeDetailsPanelAnimations();
@@ -1396,15 +1505,10 @@ window.debugCursorState = function() {
     `;
     
     const labelText = cursor.querySelector('.label_text');
-    const labelDot = cursor.querySelector('.label_dot');
     
     if (labelText) {
       labelText.textContent = 'DEBUG MODE';
       labelText.style.cssText = 'color: white !important; font-size: 16px !important;';
-    }
-    
-    if (labelDot) {
-      labelDot.style.cssText = 'background: yellow !important; width: 20px !important; height: 20px !important; border-radius: 50% !important;';
     }
     
     console.log('✅ Cursor forced visible with red background and "DEBUG MODE" text');
@@ -2281,6 +2385,86 @@ function destroySVGScrollAnimations() {
 // ================================================================================
 // 🎨 PAGE-SPECIFIC ANIMATIONS
 // ================================================================================
+
+/**
+ * PROJECTS LAYOUT FADE-IN ANIMATION
+ * Animates CMS items in .projects_layout with staggered fade-in on page load
+ */
+function animateProjectsLayout() {
+  console.log('🖼️ [PROJECTS LAYOUT] Animating .projects_layout items...');
+  
+  // Target Webflow CMS items inside .projects_layout
+  const items = gsap.utils.toArray('.projects_layout .w-dyn-item');
+  
+  if (items.length === 0) {
+    console.log('ℹ️ [PROJECTS LAYOUT] No .w-dyn-item elements found in .projects_layout');
+    return;
+  }
+  
+  console.log(`✅ [PROJECTS LAYOUT] Found ${items.length} CMS items - animating with stagger...`);
+  
+  // Set initial state - hidden and slightly below
+  gsap.set(items, {
+    opacity: 0,
+    y: 30
+  });
+  
+  // Animate each item with stagger
+  gsap.to(items, {
+    opacity: 1,
+    y: 0,
+    duration: 0.6,
+    stagger: {
+      each: 0.1,
+      from: "start"
+    },
+    ease: "power2.out",
+    delay: 0.2,
+    onComplete: () => {
+      console.log('✅ [PROJECTS LAYOUT] Fade-in animation complete');
+    }
+  });
+}
+
+/**
+ * THUMBS SECTION FADE-IN ANIMATION
+ * Animates CMS items in #Thumbs section with staggered fade-in on page load
+ */
+function animateThumbsSection() {
+  console.log('🖼️ [THUMBS] Animating #Thumbs section items...');
+  
+  // Target Webflow CMS items inside #Thumbs
+  const items = gsap.utils.toArray('#Thumbs .w-dyn-item');
+  
+  if (items.length === 0) {
+    console.log('ℹ️ [THUMBS] No .w-dyn-item elements found in #Thumbs section');
+    return;
+  }
+  
+  console.log(`✅ [THUMBS] Found ${items.length} CMS items - animating with stagger...`);
+  
+  // Set initial state - hidden and slightly below
+  gsap.set(items, {
+    opacity: 0,
+    y: 30
+  });
+  
+  // Animate each item with stagger
+  gsap.to(items, {
+    opacity: 1,
+    y: 0,
+    duration: 0.6,
+    stagger: {
+      each: 0.1,
+      from: "start"
+    },
+    ease: "power2.out",
+    delay: 0.2,
+    onComplete: () => {
+      console.log('✅ [THUMBS] Fade-in animation complete');
+    }
+  });
+}
 
 function animateIndexPage() {
   console.log('📋 Animating index page elements...');

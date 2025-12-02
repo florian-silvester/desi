@@ -1,5 +1,32 @@
 console.log('🎨 Animations.js loaded');
 
+// INJECT CSS IMMEDIATELY to prevent flash before page animation
+(function() {
+  const style = document.createElement('style');
+  style.id = 'barba-initial-hide';
+  style.textContent = `
+    [data-barba="container"] {
+      opacity: 0;
+    }
+    /* Hide slider_nav_wrap initially - it's outside Barba container but needs intro animation */
+    .slider_nav_wrap > * {
+      opacity: 0;
+    }
+    /* Nav toggle links - visibility controlled by JS */
+    /* Initial state set by updateNavLinksVisibility() */
+  `;
+  document.head.appendChild(style);
+  console.log('🎨 Injected opacity:0 CSS to prevent flash');
+  
+  // IMMEDIATE SCROLL TO TOP - Disable browser scroll restoration and scroll to top
+  // This runs as early as possible to prevent seeing wrong scroll position
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+  window.scrollTo(0, 0);
+  console.log('🔝 Immediate scroll to top on page load');
+})();
+
 // SVGs start hidden via Webflow (opacity: 0), just set the y position
 // COMMENTED OUT - Intro animation disabled
 /*
@@ -52,6 +79,101 @@ let sliderInstances = [];
 
 // Global scroll position storage
 let scrollPositions = {};
+
+// Track previous page for "Close" navigation (not history.back which is unreliable)
+let previousPageUrl = '/';
+
+// ================================================================================
+// 🔄 SCROLL POSITION HELPERS (Modal-like behavior)
+// ================================================================================
+// Only remember scroll when navigating TO project detail pages
+// Don't remember scroll when navigating between main index pages
+
+/**
+ * Check if a path is a "main index" page (home or home-index)
+ * These pages should NOT remember scroll position between each other
+ * / = home (thumbnail view)
+ * /home-index = index (list view)
+ */
+function isMainIndexPage(path) {
+  const normalizedPath = path.replace(/\/$/, '') || '/'; // Remove trailing slash, default to /
+  return normalizedPath === '/' || 
+         normalizedPath === '/home-index';
+}
+
+/**
+ * Check if a path is the homepage (projects thumbnail view)
+ * URL: / (root)
+ */
+function isHomePage(path) {
+  const normalizedPath = path.replace(/\/$/, '').replace(/\.html$/, '') || '/';
+  console.log('🔍 [NAV] isHomePage check:', path, '→', normalizedPath);
+  return normalizedPath === '/';
+}
+
+/**
+ * Check if a path is the index page (list view)
+ * URL: /home-index
+ */
+function isIndexPage(path) {
+  const normalizedPath = path.replace(/\/$/, '').replace(/\.html$/, '') || '/';
+  console.log('🔍 [NAV] isIndexPage check:', path, '→', normalizedPath);
+  return normalizedPath === '/home-index';
+}
+
+/**
+ * UPDATE NAV LINKS VISIBILITY
+ * On homepage: show #index, hide #home
+ * On index page: show #home, hide #index
+ * @param {string} path - Optional path to use (for Barba transitions where URL may not be updated yet)
+ */
+function updateNavLinksVisibility(path) {
+  const currentPath = path || window.location.pathname;
+  const $homeLink = $('#home');
+  const $indexLink = $('#index');
+  
+  console.log('🔗 [NAV] Updating nav visibility for path:', currentPath);
+  
+  if (!$homeLink.length || !$indexLink.length) {
+    console.log('ℹ️ [NAV] Nav links #home or #index not found');
+    return;
+  }
+  
+  if (isHomePage(currentPath)) {
+    // On homepage: show Index, hide Home
+    console.log('🏠 [NAV] Homepage detected - showing Index, hiding Home');
+    gsap.set($indexLink, { opacity: 1, pointerEvents: 'auto' });
+    $indexLink.removeClass('u-pointer-off');
+    gsap.set($homeLink, { opacity: 0, pointerEvents: 'none' });
+    $homeLink.addClass('u-pointer-off');
+  } else if (isIndexPage(currentPath)) {
+    // On index page: show Home, hide Index
+    console.log('📋 [NAV] Index page detected - showing Home, hiding Index');
+    gsap.set($homeLink, { opacity: 1, pointerEvents: 'auto' });
+    $homeLink.removeClass('u-pointer-off');
+    gsap.set($indexLink, { opacity: 0, pointerEvents: 'none' });
+    $indexLink.addClass('u-pointer-off');
+  } else {
+    // On other pages (projects, contact, etc): show both
+    console.log('📄 [NAV] Other page - showing both nav links');
+    gsap.set([$homeLink, $indexLink], { opacity: 1, pointerEvents: 'auto' });
+    $homeLink.removeClass('u-pointer-off');
+    $indexLink.removeClass('u-pointer-off');
+  }
+}
+
+/**
+ * Check if a path is a project detail page
+ * These are the "modal" pages - when leaving them, restore scroll
+ */
+function isProjectDetailPage(path) {
+  const normalizedPath = path.replace(/\/$/, '');
+  // Project detail pages typically have /projects/ in the path or similar patterns
+  // Also include any page that's not a main index page (for safety)
+  return normalizedPath.includes('/projects/') || 
+         normalizedPath.includes('/project/') ||
+         (!isMainIndexPage(normalizedPath) && normalizedPath !== '/contact' && normalizedPath !== '/studio');
+}
 
 // Global click position storage for transform origin effect
 let clickPosition = { x: 50, y: 50 }; // Default to center
@@ -177,10 +299,12 @@ function setupCustomCursorListeners() {
     if (sliderOverviewState.isOverviewMode) return;
     
     const $target = $(e.target);
-    // If clicking on slider_wrap but NOT inside ghost_wrap, go back
+    // If clicking on slider_wrap but NOT inside ghost_wrap, go to stored previous page
     if ($target.closest('.slider_ghost_wrap').length === 0) {
-      console.log('⬅️ [SLIDER CLOSE] Clicking margin - navigating back...');
-      history.back();
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('✅ [SLIDER CLOSE] Using barba.go() to:', previousPageUrl);
+      barba.go(previousPageUrl);
     }
   });
 
@@ -415,6 +539,34 @@ function initializeScrollAnimations() {
 
 $(document).ready(function() {
   console.log('📱 DOM ready - animations.js connected to Webflow');
+  
+  // DISABLE BROWSER SCROLL RESTORATION - Always start at top on refresh
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+    console.log('🔝 Browser scroll restoration disabled - refresh starts at top');
+  }
+  
+  // Always scroll to top on page load (handles refresh)
+  window.scrollTo(0, 0);
+  
+  // Update nav links visibility based on current page
+  // Small delay to ensure DOM is fully ready
+  setTimeout(() => {
+    updateNavLinksVisibility();
+  }, 50);
+  
+  // PREVENT SAME-PAGE NAVIGATION - Stop clicks on links to current page
+  $(document).on('click', 'a', function(e) {
+    const linkPath = new URL(this.href, window.location.origin).pathname;
+    const currentPath = window.location.pathname;
+    
+    if (linkPath === currentPath) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('⛔ Blocked same-page navigation:', linkPath);
+      return false;
+    }
+  });
   
   // Back button - navigate to previous page
   $(document).on('click', '#is-back', function(e) {
@@ -811,16 +963,28 @@ function initializeProjectsItemHoverAnimations() {
   // Mouse enter - slide in from right (fast & snappy)
   $(document).on('mouseenter.projectsItemHover', '.projects_wrap .projects_item', function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
+    const $textWrap = $(this).find('.projects_text_wrap');
     
     if ($imgWrap.length) {
       // Kill any existing animations for responsive hover-in
       gsap.killTweensOf($imgWrap);
       
-      // Slide in to normal position - instant snap
+      // Slide in to normal position - instant start, soft landing
       gsap.to($imgWrap, {
         xPercent: 0,
-        duration: 0.08,
-        ease: "power2.out"
+        duration: 0.15,
+        ease: "power3.out"
+      });
+    }
+    
+    if ($textWrap.length) {
+      gsap.killTweensOf($textWrap);
+      
+      // Move text to the right by 1rem
+      gsap.to($textWrap, {
+        x: '1rem',
+        duration: 0.15,
+        ease: "power3.out"
       });
     }
   });
@@ -828,6 +992,7 @@ function initializeProjectsItemHoverAnimations() {
   // Mouse leave - slide back out to the right (waits for hover-in to complete)
   $(document).on('mouseleave.projectsItemHover', '.projects_wrap .projects_item', function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
+    const $textWrap = $(this).find('.projects_text_wrap');
     
     if ($imgWrap.length) {
       // Don't kill - let hover-in complete first, then animate out
@@ -837,6 +1002,16 @@ function initializeProjectsItemHoverAnimations() {
         duration: 0.5,
         ease: "power2.inOut",
         delay: 0.1  // Small delay ensures hover-in finishes
+      });
+    }
+    
+    if ($textWrap.length) {
+      // Move text back to original position
+      gsap.to($textWrap, {
+        x: 0,
+        duration: 0.5,
+        ease: "power2.inOut",
+        delay: 0.1
       });
     }
   });
@@ -1200,15 +1375,193 @@ function initializeBarba() {
   
   barba.init({
     sync: true, 
+    preventRunning: true,  // Prevent transitions while one is running
     
     transitions: [
       {
         name: 'soft-crossfade',
+        
+        // CRITICAL: Hide next container BEFORE it's added to DOM
+        beforeEnter(data) {
+          console.log('🔒 BEFORE ENTER: Hiding next container immediately');
+          gsap.set(data.next.container, { opacity: 0 });
+        },
+        
+        // First page load - no leave, just fade in
+        once(data) {
+          console.log('🌅 ONCE: First page load');
+          
+          // ALWAYS start at top on first page load (refresh)
+          window.scrollTo(0, 0);
+          console.log('🔝 Scrolled to top on first page load');
+          
+          // Update nav links visibility for initial page
+          updateNavLinksVisibility(data.next.url.path);
+          
+          // Check if this is the homepage with hero animation
+          const heroHeaderWrap = data.next.container.querySelector('.hero_header_wrap');
+          const isHomepage = heroHeaderWrap !== null;
+          
+          if (isHomepage && !heroAnimationPlayed) {
+            console.log('🏠 Homepage detected - running intro sequence');
+            
+            // Make page visible immediately
+            gsap.set(data.next.container, { opacity: 1 });
+            
+            // Find text elements
+            const nameText = data.next.container.querySelector('#name');
+            const headerText = data.next.container.querySelector('#header');
+            
+            // Find .projects_list CMS items to animate after intro
+            const projectsListItems = data.next.container.querySelectorAll('.projects_list .w-dyn-item');
+            console.log('🔍 Found .projects_list .w-dyn-item:', projectsListItems.length);
+            if (projectsListItems.length > 0) {
+              gsap.set(projectsListItems, { opacity: 0, y: 30 });
+            }
+            
+            // Find .slider_nav_wrap children to animate after intro
+            // NOTE: .slider_nav_wrap is OUTSIDE Barba container, so query from document
+            const sliderNavItems = document.querySelectorAll('.slider_nav_wrap > *');
+            console.log('🔍 Found .slider_nav_wrap children:', sliderNavItems.length);
+            if (sliderNavItems.length > 0) {
+              gsap.set(sliderNavItems, { opacity: 0 });
+            }
+            
+            // Set initial state - both texts hidden
+            if (nameText) gsap.set(nameText, { opacity: 0 });
+            if (headerText) gsap.set(headerText, { opacity: 0 });
+            
+            // Create intro timeline
+            const introTimeline = gsap.timeline({
+              onComplete: () => {
+                console.log('✅ Full intro sequence complete');
+                heroAnimationPlayed = true;
+                
+                // Stagger .projects_list children
+                if (projectsListItems.length > 0) {
+                  console.log('🎬 Starting stagger animation for', projectsListItems.length, 'items');
+                  gsap.to(projectsListItems, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.6,
+                    stagger: 0.1,
+                    ease: "power2.out"
+                  });
+                }
+                
+                // Fade in .slider_nav_wrap children with random stagger
+                if (sliderNavItems.length > 0) {
+                  console.log('🎬 Starting random stagger for', sliderNavItems.length, 'nav items');
+                  gsap.to(sliderNavItems, {
+                    opacity: 1,
+                    duration: 0.5,
+                    stagger: {
+                      each: 0.1,
+                      from: "random"
+                    },
+                    ease: "power2.out"
+                  });
+                }
+              }
+            });
+            
+            // Step 1: Fade in #name
+            if (nameText) {
+              introTimeline.to(nameText, {
+                opacity: 1,
+                duration: 0.5,
+                ease: "power2.out"
+              });
+            }
+            
+            // Step 2: Wait, then fade out #name
+            if (nameText) {
+              introTimeline.to(nameText, {
+                opacity: 0,
+                duration: 0.5,
+                ease: "power2.out",
+                delay: 1  // Wait 1 second before fading out
+              });
+            }
+            
+            // Step 3: Fade in #header
+            if (headerText) {
+              introTimeline.to(headerText, {
+                opacity: 1,
+                duration: 0.5,
+                ease: "power2.out"
+              });
+            }
+            
+            // Step 4: Wait, then fade out #header
+            if (headerText) {
+              introTimeline.to(headerText, {
+                opacity: 0,
+                duration: 0.5,
+                ease: "power2.out",
+                delay: 1  // Wait 1 second before fading out
+              });
+            }
+            
+            // Step 5: Shrink hero from 100vh
+            introTimeline.from(heroHeaderWrap, {
+              height: '100vh',
+              duration: 0.8,
+              ease: "power2.out",
+              delay: 0.3
+            });
+            
+            return introTimeline;
+          } else {
+            // Regular fade in for non-homepage or return visit
+            
+            // On homepage return visits, keep #name and #header hidden
+            if (isHomepage) {
+              const nameText = data.next.container.querySelector('#name');
+              const headerText = data.next.container.querySelector('#header');
+              if (nameText) gsap.set(nameText, { opacity: 0 });
+              if (headerText) gsap.set(headerText, { opacity: 0 });
+              console.log('👁️ Set #name and #header to opacity 0 (return visit)');
+            }
+            
+            // Show slider_nav_wrap immediately (no intro animation on return visits)
+            // It's hidden by CSS initially, so we need to make it visible
+            const sliderNavItems = document.querySelectorAll('.slider_nav_wrap > *');
+            if (sliderNavItems.length > 0) {
+              gsap.set(sliderNavItems, { opacity: 1 });
+              console.log('👁️ Made slider_nav_wrap visible (return visit)');
+            }
+            
+            return gsap.fromTo(data.next.container,
+              { opacity: 0 },
+              { opacity: 1, duration: 0.5, ease: "power2.out" }
+            );
+          }
+        },
+        
         leave(data) {
           console.log('🌅 CROSSFADE LEAVE: Starting fade out');
           
-          // Store scroll position
-          scrollPositions[data.current.url.path] = window.scrollY;
+          // Store current URL for "Close" navigation
+          previousPageUrl = data.current.url.href;
+          console.log('📍 Stored previous page URL:', previousPageUrl);
+          
+          const currentPath = data.current.url.path;
+          const nextPath = data.next.url.path;
+          
+          // SCROLL POSITION LOGIC (Modal-like behavior):
+          // Only store scroll when leaving a main index page TO go to a project
+          // Don't store when navigating between index pages
+          if (isMainIndexPage(currentPath) && isProjectDetailPage(nextPath)) {
+            scrollPositions[currentPath] = window.scrollY;
+            console.log(`📍 Stored scroll position for ${currentPath}: ${window.scrollY}px (going to project)`);
+          } else if (isMainIndexPage(currentPath) && isMainIndexPage(nextPath)) {
+            // Navigating between main pages - clear any stored position for destination
+            delete scrollPositions[nextPath];
+            console.log(`🔄 Navigating between main pages - will start at top`);
+          } else {
+            console.log(`📍 Not storing scroll (current: ${currentPath}, next: ${nextPath})`);
+          }
           
           // Destroy all page-specific components
           destroySliders();
@@ -1235,6 +1588,22 @@ function initializeBarba() {
         
         enter(data) {
           console.log('🌅 CROSSFADE ENTER: Starting fade in');
+          
+          // Keep #name and #header hidden on homepage (intro already played)
+          const nameText = data.next.container.querySelector('#name');
+          const headerText = data.next.container.querySelector('#header');
+          if (nameText) gsap.set(nameText, { opacity: 0 });
+          if (headerText) gsap.set(headerText, { opacity: 0 });
+          if (nameText || headerText) {
+            console.log('👁️ Set #name and #header to opacity 0 (page transition)');
+          }
+          
+          // Show slider_nav_wrap (it's outside Barba container, hidden by CSS)
+          const sliderNavItems = document.querySelectorAll('.slider_nav_wrap > *');
+          if (sliderNavItems.length > 0) {
+            gsap.set(sliderNavItems, { opacity: 1 });
+            console.log('👁️ Made slider_nav_wrap visible (page transition)');
+          }
           
           // Check if this is a slider page
           const isSliderPage = data.next.container.querySelector('.swiper');
@@ -1306,11 +1675,27 @@ function initializeBarba() {
          after(data) {
            console.log('🔄 After crossfade complete');
            
-           // Restore scroll position
-           const storedPosition = scrollPositions[data.next.url.path];
-           if (storedPosition !== undefined) {
-             window.scrollTo(0, storedPosition);
+           const previousPath = data.current.url.path;
+           const nextPath = data.next.url.path;
+           
+           // SCROLL POSITION LOGIC (Modal-like behavior):
+           // Only restore scroll when coming FROM a project page TO a main index page
+           if (isProjectDetailPage(previousPath) && isMainIndexPage(nextPath)) {
+             const storedPosition = scrollPositions[nextPath];
+             if (storedPosition !== undefined) {
+               window.scrollTo(0, storedPosition);
+               console.log(`📍 Restored scroll position for ${nextPath}: ${storedPosition}px (returning from project)`);
+             } else {
+               console.log(`📍 No stored scroll position for ${nextPath}`);
+             }
+           } else {
+             // Not returning from a project - start at top
+             window.scrollTo(0, 0);
+             console.log(`🔝 Starting at top of page (not returning from project)`);
            }
+           
+           // Update nav links visibility for new page (pass path from Barba data)
+           updateNavLinksVisibility(data.next.url.path);
          }
        }
     ],
@@ -2223,7 +2608,19 @@ function deactivateOverviewMode() {
 function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
   console.log(`🎨 Starting homepage animations (${context})...`);
   
+  const heroHeaderWrap = document.querySelector('.hero_header_wrap');
   const heroWrap = document.querySelector('.hero_wrap');
+  
+  // Hero header wrap - shrink from 100vh to natural height
+  if (heroHeaderWrap && !heroAnimationPlayed) {
+    console.log(`🎬 Animating .hero_header_wrap from 100vh (${context})`);
+    gsap.from(heroHeaderWrap, {
+      height: '100vh',
+      duration: 0.8,
+      ease: "power2.out",
+      delay: 2  // 2 second delay - sits at 100vh first
+    });
+  }
   
   // Hero wrap - only animate ONCE per session
   if (heroWrap) {
@@ -2393,6 +2790,13 @@ function destroySVGScrollAnimations() {
 function animateProjectsLayout() {
   console.log('🖼️ [PROJECTS LAYOUT] Animating .projects_layout items...');
   
+  // Skip if homepage intro animation is playing (will be handled by intro stagger)
+  const isHomepage = document.querySelector('.hero_header_wrap') !== null;
+  if (isHomepage && !heroAnimationPlayed) {
+    console.log('⏭️ [PROJECTS LAYOUT] Skipping - homepage intro animation will handle this');
+    return;
+  }
+  
   // Target Webflow CMS items inside .projects_layout
   const items = gsap.utils.toArray('.projects_layout .w-dyn-item');
   
@@ -2432,6 +2836,13 @@ function animateProjectsLayout() {
  */
 function animateThumbsSection() {
   console.log('🖼️ [THUMBS] Animating #Thumbs section items...');
+  
+  // Skip if homepage intro animation is playing (will be handled by intro stagger)
+  const isHomepage = document.querySelector('.hero_header_wrap') !== null;
+  if (isHomepage && !heroAnimationPlayed) {
+    console.log('⏭️ [THUMBS] Skipping - homepage intro animation will handle this');
+    return;
+  }
   
   // Target Webflow CMS items inside #Thumbs
   const items = gsap.utils.toArray('#Thumbs .w-dyn-item');

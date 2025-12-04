@@ -817,6 +817,9 @@ function initializeThumbsProjectsListHoverAnimations() {
     const $imgWrap = $(this).find('.projects_img_wrap');
     const $textWrap = $(this).find('.projects_text_wrap');
     
+    // Raise z-index so hovered item appears on top
+    $(this).css('z-index', 10);
+    
     if ($imgWrap.length) {
       gsap.killTweensOf($imgWrap);
       
@@ -837,6 +840,9 @@ function initializeThumbsProjectsListHoverAnimations() {
   // Mouse leave - scale back to normal and reset cursor label
   $(document).on('mouseleave.thumbsListHover', '.thumbs_id_wrap .projects_list .projects_item', function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
+    
+    // Reset z-index
+    $(this).css('z-index', '');
     
     if ($imgWrap.length) {
       gsap.killTweensOf($imgWrap);
@@ -2498,6 +2504,9 @@ function initializeSliderOverviewAnimations() {
   $(document).on('mouseenter.overviewHover', '.swiper_img_wrap', function() {
     if (!sliderOverviewState.isOverviewMode) return;
     
+    // Raise z-index so hovered slide appears on top
+    $(this).closest('.swiper-slide').css('z-index', 10);
+    
     gsap.killTweensOf(this);
     gsap.to(this, {
       scale: 1.1,
@@ -2508,6 +2517,9 @@ function initializeSliderOverviewAnimations() {
   
   $(document).on('mouseleave.overviewHover', '.swiper_img_wrap', function() {
     if (!sliderOverviewState.isOverviewMode) return;
+    
+    // Reset z-index
+    $(this).closest('.swiper-slide').css('z-index', '');
     
     gsap.killTweensOf(this);
     gsap.to(this, {

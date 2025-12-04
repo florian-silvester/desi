@@ -8,12 +8,6 @@ console.log('🎨 Animations.js loaded');
     [data-barba="container"] {
       opacity: 0;
     }
-    /* Hide slider_nav_wrap initially - it's outside Barba container but needs intro animation */
-    .slider_nav_wrap > * {
-      opacity: 0;
-    }
-    /* Nav toggle links - visibility controlled by JS */
-    /* Initial state set by updateNavLinksVisibility() */
   `;
   document.head.appendChild(style);
   console.log('🎨 Injected opacity:0 CSS to prevent flash');
@@ -25,6 +19,13 @@ console.log('🎨 Animations.js loaded');
   }
   window.scrollTo(0, 0);
   console.log('🔝 Immediate scroll to top on page load');
+  
+  // Hide slider_nav_wrap children on homepage (for intro animation)
+  // Will be shown later by JS
+  if (window.location.pathname === '/' || window.location.pathname === '') {
+    const sliderNavItems = document.querySelectorAll('.slider_nav_wrap > *');
+    sliderNavItems.forEach(item => item.style.opacity = '0');
+  }
 })();
 
 // SVGs start hidden via Webflow (opacity: 0), just set the y position
@@ -59,7 +60,7 @@ gsap.set(['.studio_svg', '.penzlien_svg'], {
 🎯 QUICK REFERENCE - CUSTOM CURSOR SYSTEM:
    • initializeCustomCursor() - Main setup (runs ONCE on page load, never again)
    • setupCustomCursorListeners() - Add hover behaviors (runs after each page transition)
-   • updateCursorLabel(text, scaleDot) - Update cursor text and dot scale
+   • updateCursorLabel(text) - Update cursor text (default: "↗", links: "+")
    • testCustomCursor() - Test mousemove listener and basic functionality
    • debugCursorState() - Force cursor visible with red background for debugging
 
@@ -99,67 +100,6 @@ function isMainIndexPage(path) {
   const normalizedPath = path.replace(/\/$/, '') || '/'; // Remove trailing slash, default to /
   return normalizedPath === '/' || 
          normalizedPath === '/home-index';
-}
-
-/**
- * Check if a path is the homepage (projects thumbnail view)
- * URL: / (root)
- */
-function isHomePage(path) {
-  const normalizedPath = path.replace(/\/$/, '').replace(/\.html$/, '') || '/';
-  console.log('🔍 [NAV] isHomePage check:', path, '→', normalizedPath);
-  return normalizedPath === '/';
-}
-
-/**
- * Check if a path is the index page (list view)
- * URL: /home-index
- */
-function isIndexPage(path) {
-  const normalizedPath = path.replace(/\/$/, '').replace(/\.html$/, '') || '/';
-  console.log('🔍 [NAV] isIndexPage check:', path, '→', normalizedPath);
-  return normalizedPath === '/home-index';
-}
-
-/**
- * UPDATE NAV LINKS VISIBILITY
- * On homepage: show #index, hide #home
- * On index page: show #home, hide #index
- * @param {string} path - Optional path to use (for Barba transitions where URL may not be updated yet)
- */
-function updateNavLinksVisibility(path) {
-  const currentPath = path || window.location.pathname;
-  const $homeLink = $('#home');
-  const $indexLink = $('#index');
-  
-  console.log('🔗 [NAV] Updating nav visibility for path:', currentPath);
-  
-  if (!$homeLink.length || !$indexLink.length) {
-    console.log('ℹ️ [NAV] Nav links #home or #index not found');
-    return;
-  }
-  
-  if (isHomePage(currentPath)) {
-    // On homepage: show Index, hide Home
-    console.log('🏠 [NAV] Homepage detected - showing Index, hiding Home');
-    gsap.set($indexLink, { opacity: 1, pointerEvents: 'auto' });
-    $indexLink.removeClass('u-pointer-off');
-    gsap.set($homeLink, { opacity: 0, pointerEvents: 'none' });
-    $homeLink.addClass('u-pointer-off');
-  } else if (isIndexPage(currentPath)) {
-    // On index page: show Home, hide Index
-    console.log('📋 [NAV] Index page detected - showing Home, hiding Index');
-    gsap.set($homeLink, { opacity: 1, pointerEvents: 'auto' });
-    $homeLink.removeClass('u-pointer-off');
-    gsap.set($indexLink, { opacity: 0, pointerEvents: 'none' });
-    $indexLink.addClass('u-pointer-off');
-  } else {
-    // On other pages (projects, contact, etc): show both
-    console.log('📄 [NAV] Other page - showing both nav links');
-    gsap.set([$homeLink, $indexLink], { opacity: 1, pointerEvents: 'auto' });
-    $homeLink.removeClass('u-pointer-off');
-    $indexLink.removeClass('u-pointer-off');
-  }
 }
 
 /**
@@ -218,88 +158,62 @@ function destroyCustomCursor() {
 
 /**
  * LIGHTWEIGHT SETUP FOR BARBA TRANSITIONS  
- * Only re-adds hover listeners when cursor element persists outside container
+ * Custom cursor only active on .thumbs_id_wrap and .slider_wrap
  */
 function setupCustomCursorListeners() {
   console.log('🎨 [CURSOR HOVERS] Setting up hover listeners...');
   
   // Clean up any old hover listeners first
   $(document).off('mouseenter.customCursor mouseleave.customCursor');
-
-  // PROJECT LINKS: Always show "View" and scale dot
-  $(document).on('mouseenter.customCursor', '.project_link', function() {
-    updateCursorLabel("View", true);
-  });
-  $(document).on('mouseleave.customCursor', '.project_link', () => updateCursorLabel("", false));
-
-  // NAVIGATION ITEMS: Scale dot, no text
-  $(document).on('mouseenter.customCursor', '.nav_link, .footer_link', () => updateCursorLabel("", true));
-  $(document).on('mouseleave.customCursor', '.nav_link, .footer_link', () => updateCursorLabel("", false));
+  $(document).off('click.sliderClose mouseenter.sliderClose mousemove.sliderClose');
   
-  // SLIDER NAVIGATION: Show current slide count (e.g. "1 / 11")
-  // Hide in overview mode
+  // ========================================
+  // SLIDER (.slider_wrap) - Show slide counter
+  // ========================================
   function getSlideCountLabel() {
-    // Don't show count in overview mode
     if (sliderOverviewState.isOverviewMode) {
       return "";
     }
     if (sliderInstances.length > 0) {
       const slider = sliderInstances[0];
-      const current = slider.getCurrentSlide() + 1; // 1-based for display
+      const current = slider.getCurrentSlide() + 1;
       const total = slider.slides.length;
       return `${current} / ${total}`;
     }
     return "";
   }
   
-  // Update cursor on hover
-  $(document).on('mouseenter.customCursor', '#bw, #ffwd, .swiper-slide', function() {
-    updateCursorLabel(getSlideCountLabel(), true);
+  // Show slide counter on slider elements
+  $(document).on('mouseenter.customCursor', '.slider_wrap #bw, .slider_wrap #ffwd, .slider_wrap .swiper-slide', function() {
+    updateCursorLabel(getSlideCountLabel());
   });
-  $(document).on('mouseleave.customCursor', '#bw, #ffwd, .swiper-slide', () => updateCursorLabel("", false));
   
-  // Update cursor after clicking nav buttons (with small delay for slide change)
-  $(document).on('click.customCursor', '#bw, #ffwd', function() {
+  // Update cursor after clicking nav buttons
+  $(document).on('click.customCursor', '.slider_wrap #bw, .slider_wrap #ffwd', function() {
     setTimeout(() => {
-      updateCursorLabel(getSlideCountLabel(), true);
+      updateCursorLabel(getSlideCountLabel());
     }, 50);
   });
 
-  // DETAILS WRAP: Show "Close" when hovering over the open details panel
-  $(document).on('mouseenter.customCursor', '.details_wrap', function() {
-    if (detailsPanelState.isOpen) {
-      updateCursorLabel("Close", true);
-    }
-  });
-  $(document).on('mouseleave.customCursor', '.details_wrap', () => updateCursorLabel("", false));
-
-  // PROJECTS WRAP: Hide label text inside projects list
-  $(document).on('mouseenter.customCursor', '.projects_wrap', () => updateCursorLabel("", false));
-
-  // SLIDER PAGE: Show "Close" when OUTSIDE .slider_ghost_wrap (the far left/right margins)
+  // Show "Close" when OUTSIDE .slider_ghost_wrap (margins)
   $(document).on('mouseenter.sliderClose', '.slider_wrap', function(e) {
-    // Only trigger when entering slider_wrap but NOT on ghost_wrap or its children
     const $target = $(e.target);
     if ($target.closest('.slider_ghost_wrap').length === 0 && !sliderOverviewState.isOverviewMode) {
-      updateCursorLabel("Close", true);
+      updateCursorLabel("Close");
     }
   });
   
   $(document).on('mousemove.sliderClose', '.slider_wrap', function(e) {
     if (sliderOverviewState.isOverviewMode) return;
-    
     const $target = $(e.target);
-    // If we're directly on slider_wrap (not inside ghost_wrap), show Close
     if ($target.closest('.slider_ghost_wrap').length === 0) {
-      updateCursorLabel("Close", true);
+      updateCursorLabel("Close");
     }
   });
   
   $(document).on('click.sliderClose', '.slider_wrap', function(e) {
     if (sliderOverviewState.isOverviewMode) return;
-    
     const $target = $(e.target);
-    // If clicking on slider_wrap but NOT inside ghost_wrap, go to stored previous page
     if ($target.closest('.slider_ghost_wrap').length === 0) {
       e.preventDefault();
       e.stopPropagation();
@@ -308,20 +222,35 @@ function setupCustomCursorListeners() {
     }
   });
 
-  console.log('✅ [CURSOR HOVERS] Hover listeners are ready.');
+  // ========================================
+  // THUMBS (.thumbs_id_wrap) - handled by initializeThumbsProjectsListHoverAnimations
+  // Shows project names on hover
+  // ========================================
+
+  console.log('✅ [CURSOR HOVERS] Hover listeners are ready (thumbs + slider only).');
 }
 
 /**
  * CURSOR MOVEMENT HANDLER
  * Updates cursor position following the mouse with smooth GSAP animation
+ * Only shows cursor when inside .thumbs_id_wrap or .slider_wrap
  */
 function handleCursorMove(event) {
   if (customCursorState.cursor) {
+    // Check if mouse is inside allowed areas
+    const target = event.target;
+    const isInSlider = target.closest('.slider_wrap');
+    const isOnProjectsItem = target.closest('.thumbs_id_wrap .projects_item');
+    
+    // Hide custom cursor in overview mode (let CSS pointer show instead)
+    const isOverviewMode = sliderOverviewState.isOverviewMode;
+    const shouldShowCursor = (isInSlider && !isOverviewMode) || isOnProjectsItem;
+    
     gsap.to(customCursorState.cursor, {
       x: event.clientX,
       y: event.clientY,
-      opacity: 1, // Make cursor visible on first movement
-      duration: 0.1, // Slight trailing effect
+      opacity: shouldShowCursor ? 1 : 0,
+      duration: 0.1,
       ease: "power2.out"
     });
   }
@@ -329,29 +258,11 @@ function handleCursorMove(event) {
 
 /**
  * UPDATE CURSOR LABEL FUNCTION
- * Changes the cursor text and scales cursor
- * Default: cursor is small (0.5), on hover grows to normal (1.0)
- * Counter-scales the text so it stays the same size
+ * Changes the cursor text - only shows text when specifically provided
  */
-function updateCursorLabel(text, isHovering = false) {
+function updateCursorLabel(text) {
   if (customCursorState.cursor && customCursorState.labelText) {
     customCursorState.labelText.textContent = text || '';
-    
-    // Default small (0.5), grow to normal (1.0) on hover
-    const cursorScale = isHovering ? 1 : 0.5;
-    const textScale = isHovering ? 1 : 2; // Counter-scale: when cursor is 0.5, text is 2x to stay same size
-    
-    gsap.to(customCursorState.cursor, {
-      scale: cursorScale,
-      duration: 0.15,
-      ease: 'power2.out'
-    });
-    
-    gsap.to(customCursorState.labelText, {
-      scale: textScale,
-      duration: 0.15,
-      ease: 'power2.out'
-    });
   }
 }
 
@@ -380,17 +291,10 @@ function initializeCustomCursor() {
   customCursorState.labelText = labelText;
   
   // Set initial position and state to prevent cursor appearing at (0,0)
-  // Start small (0.5 scale) - grows to 1.0 on hover
   gsap.set(cursor, {
     x: -100, // Start off-screen
     y: -100,
-    opacity: 0, // Start invisible until first mouse movement
-    scale: 0.5 // Default small size
-  });
-  
-  // Counter-scale text so it appears normal size when cursor is small
-  gsap.set(labelText, {
-    scale: 2
+    opacity: 0 // Start invisible until first mouse movement
   });
   
   // Clear any existing text
@@ -549,12 +453,6 @@ $(document).ready(function() {
   // Always scroll to top on page load (handles refresh)
   window.scrollTo(0, 0);
   
-  // Update nav links visibility based on current page
-  // Small delay to ensure DOM is fully ready
-  setTimeout(() => {
-    updateNavLinksVisibility();
-  }, 50);
-  
   // PREVENT SAME-PAGE NAVIGATION - Stop clicks on links to current page
   $(document).on('click', 'a', function(e) {
     const linkPath = new URL(this.href, window.location.origin).pathname;
@@ -608,6 +506,16 @@ $(document).ready(function() {
     // Animate sections on page load with stagger
     animateThumbsSection();
     animateProjectsLayout();
+    
+    // About page animation (only if on about page)
+    if (document.querySelector('.about_id_wrap')) {
+      animateAboutPage(true);  // true = initial load
+    }
+    
+    // Imprint page animation (only if on imprint page)
+    if (document.querySelector('.imprint_id_wrap')) {
+      animateImprintPage(true);  // true = initial load
+    }
     
     // CRITICAL: Initialize cursor ONCE on page load
     initializeCustomCursor();
@@ -868,22 +776,29 @@ function initializeThumbsProjectsListHoverAnimations() {
   
   console.log(`✅ [THUMBS LIST HOVER] Found ${projectsItems.length} projects items - setting up scale hovers...`);
   
-  // Mouse enter - scale up
+  // Mouse enter - scale up image and show project name in cursor
   $(document).on('mouseenter.thumbsListHover', '.thumbs_id_wrap .projects_list .projects_item', function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
+    const $textWrap = $(this).find('.projects_text_wrap');
     
     if ($imgWrap.length) {
       gsap.killTweensOf($imgWrap);
       
       gsap.to($imgWrap, {
-        scale: 1.02,
+        scale: 1.1,
         duration: 0.3,
         ease: "power2.out"
       });
     }
+    
+    // Show project name in cursor label
+    if ($textWrap.length) {
+      const projectName = $textWrap.text().trim();
+      updateCursorLabel(projectName);
+    }
   });
   
-  // Mouse leave - scale back to normal
+  // Mouse leave - scale back to normal and reset cursor label
   $(document).on('mouseleave.thumbsListHover', '.thumbs_id_wrap .projects_list .projects_item', function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
     
@@ -896,6 +811,9 @@ function initializeThumbsProjectsListHoverAnimations() {
         ease: "power2.out"
       });
     }
+    
+    // Reset cursor label to default
+    updateCursorLabel("");
   });
   
   console.log('✅ [THUMBS LIST HOVER] Thumbs projects list hover animations initialized');
@@ -911,7 +829,7 @@ function initializeThumbsProjectsListHoverAnimations() {
  */
 function destroyProjectsItemHoverAnimations() {
   console.log('🧹 [PROJECTS HOVER CLEANUP] Removing projects item hover listeners...');
-  $(document).off('mouseenter.projectsItemHover mouseleave.projectsItemHover', '.projects_wrap .projects_item');
+  $(document).off('mouseenter.projectsItemHover mouseleave.projectsItemHover', '.projects_layout .projects_item');
   console.log('✅ [PROJECTS HOVER CLEANUP] Projects item hover animations cleaned up');
 }
 
@@ -919,7 +837,7 @@ function destroyProjectsItemHoverAnimations() {
  * INITIALIZE PROJECTS ITEM HOVER ANIMATIONS
  * Slides .projects_img_wrap from xPercent: 100 to 0 on hover
  * Reverses on hover out
- * Only targets .projects_item inside .projects_wrap
+ * Only targets .projects_item inside .projects_layout
  * Only on desktop (992px+) - smaller screens show image always visible
  */
 function initializeProjectsItemHoverAnimations() {
@@ -928,10 +846,10 @@ function initializeProjectsItemHoverAnimations() {
   // Clean up any existing listeners first
   destroyProjectsItemHoverAnimations();
   
-  const projectsItems = $('.projects_wrap .projects_item');
+  const projectsItems = $('.projects_layout .projects_item');
   
   if (projectsItems.length === 0) {
-    console.log('ℹ️ [PROJECTS HOVER INIT] No .projects_item elements found inside .projects_wrap');
+    console.log('ℹ️ [PROJECTS HOVER INIT] No .projects_item elements found inside .projects_layout');
     return;
   }
   
@@ -940,8 +858,11 @@ function initializeProjectsItemHoverAnimations() {
   
   if (!isDesktop) {
     console.log('📱 [PROJECTS HOVER INIT] Mobile/tablet detected - keeping images visible, no hover animation');
-    // Ensure images are visible on mobile/tablet
+    // Ensure images are visible on mobile/tablet (excludes thumbs_id_wrap items)
     projectsItems.each(function() {
+      // Skip if inside thumbs_id_wrap
+      if ($(this).closest('.thumbs_id_wrap').length) return;
+      
       const $imgWrap = $(this).find('.projects_img_wrap');
       if ($imgWrap.length) {
         gsap.set($imgWrap, { xPercent: 0 });
@@ -953,65 +874,56 @@ function initializeProjectsItemHoverAnimations() {
   console.log(`✅ [PROJECTS HOVER INIT] Desktop detected - Found ${projectsItems.length} projects items - setting up hovers...`);
   
   // Set initial state - .projects_img_wrap starts offset -101% to the left (extra 1% hides border)
+  // EXCLUDES items inside .thumbs_id_wrap (those have no offset)
   projectsItems.each(function() {
+    // Skip if inside thumbs_id_wrap
+    if ($(this).closest('.thumbs_id_wrap').length) return;
+    
     const $imgWrap = $(this).find('.projects_img_wrap');
     if ($imgWrap.length) {
       gsap.set($imgWrap, { xPercent: -101 });
     }
   });
   
-  // Mouse enter - slide in from right (fast & snappy)
-  $(document).on('mouseenter.projectsItemHover', '.projects_wrap .projects_item', function() {
+  // Mouse enter - slide in from right (fast & snappy) + scale up to 150%
+  // EXCLUDES items inside .thumbs_id_wrap (those have their own animation)
+  $(document).on('mouseenter.projectsItemHover', '.projects_layout .projects_item', function() {
+    // Skip if inside thumbs_id_wrap - those have separate animation (no offset)
+    if ($(this).closest('.thumbs_id_wrap').length) return;
+    
     const $imgWrap = $(this).find('.projects_img_wrap');
-    const $textWrap = $(this).find('.projects_text_wrap');
     
     if ($imgWrap.length) {
       // Kill any existing animations for responsive hover-in
       gsap.killTweensOf($imgWrap);
       
-      // Slide in to normal position - instant start, soft landing
+      // Slide in to normal position + scale up to 150%
       gsap.to($imgWrap, {
         xPercent: 0,
-        duration: 0.15,
-        ease: "power3.out"
-      });
-    }
-    
-    if ($textWrap.length) {
-      gsap.killTweensOf($textWrap);
-      
-      // Move text to the right by 1rem
-      gsap.to($textWrap, {
-        x: '1rem',
+        scale: 1.5,
         duration: 0.15,
         ease: "power3.out"
       });
     }
   });
   
-  // Mouse leave - slide back out to the right (waits for hover-in to complete)
-  $(document).on('mouseleave.projectsItemHover', '.projects_wrap .projects_item', function() {
+  // Mouse leave - slide back out + scale back to normal
+  // EXCLUDES items inside .thumbs_id_wrap (those have their own animation)
+  $(document).on('mouseleave.projectsItemHover', '.projects_layout .projects_item', function() {
+    // Skip if inside thumbs_id_wrap - those have separate animation (no offset)
+    if ($(this).closest('.thumbs_id_wrap').length) return;
+    
     const $imgWrap = $(this).find('.projects_img_wrap');
-    const $textWrap = $(this).find('.projects_text_wrap');
     
     if ($imgWrap.length) {
       // Don't kill - let hover-in complete first, then animate out
-      // Slide back to left offset position (-101% hides border)
+      // Slide back to left offset position + scale back to normal
       gsap.to($imgWrap, {
         xPercent: -101,
+        scale: 1,
         duration: 0.5,
         ease: "power2.inOut",
         delay: 0.1  // Small delay ensures hover-in finishes
-      });
-    }
-    
-    if ($textWrap.length) {
-      // Move text back to original position
-      gsap.to($textWrap, {
-        x: 0,
-        duration: 0.5,
-        ease: "power2.inOut",
-        delay: 0.1
       });
     }
   });
@@ -1086,10 +998,18 @@ function initializeSliders() {
         display: none !important;
       }
 
-      /* --- DEBUG: Red Container of Truth --- */
-      body.overview-mode .page_wrap {
-        background-color: red !important;
+      /* Re-enable cursor in overview mode (custom cursor is hidden) */
+      body.overview-mode .slider_wrap,
+      body.overview-mode .slider_wrap * {
+        cursor: auto !important;
       }
+      
+      /* Show pointer cursor on slides in overview mode (clickable to return to slider) */
+      body.overview-mode .swiper-slide,
+      body.overview-mode .swiper-slide * {
+        cursor: pointer !important;
+      }
+
     </style>
   `;
   
@@ -1381,10 +1301,20 @@ function initializeBarba() {
       {
         name: 'soft-crossfade',
         
-        // CRITICAL: Hide next container BEFORE it's added to DOM
+        // CRITICAL: Hide next container AND items BEFORE visible
         beforeEnter(data) {
-          console.log('🔒 BEFORE ENTER: Hiding next container immediately');
+          console.log('🔒 BEFORE ENTER: Hiding container and items');
           gsap.set(data.next.container, { opacity: 0 });
+          
+          // Pre-hide items that will be stagger-animated
+          const layoutItems = data.next.container.querySelectorAll('.projects_layout .w-dyn-item');
+          const thumbsItems = data.next.container.querySelectorAll('#Thumbs .w-dyn-item');
+          const aboutItems = data.next.container.querySelectorAll('.about_id_wrap .u-content-wrapper');
+          const imprintItems = data.next.container.querySelectorAll('.imprint_id_wrap .u-content-wrapper');
+          if (layoutItems.length > 0) gsap.set(layoutItems, { opacity: 0, y: 30 });
+          if (thumbsItems.length > 0) gsap.set(thumbsItems, { opacity: 0, y: 30 });
+          if (aboutItems.length > 0) gsap.set(aboutItems, { opacity: 0, y: 30 });
+          if (imprintItems.length > 0) gsap.set(imprintItems, { opacity: 0, y: 30 });
         },
         
         // First page load - no leave, just fade in
@@ -1394,9 +1324,6 @@ function initializeBarba() {
           // ALWAYS start at top on first page load (refresh)
           window.scrollTo(0, 0);
           console.log('🔝 Scrolled to top on first page load');
-          
-          // Update nav links visibility for initial page
-          updateNavLinksVisibility(data.next.url.path);
           
           // Check if this is the homepage with hero animation
           const heroHeaderWrap = data.next.container.querySelector('.hero_header_wrap');
@@ -1622,9 +1549,58 @@ function initializeBarba() {
           initializeProjectsItemHoverAnimations();
           initializeThumbsProjectsListHoverAnimations();
           
-          // Animate sections on page transition
-          animateThumbsSection();
-          animateProjectsLayout();
+          // Check if entering homepage with intro not yet played
+          const heroHeaderWrap = data.next.container.querySelector('.hero_header_wrap');
+          const isEnteringHomepage = heroHeaderWrap !== null;
+          
+          if (isEnteringHomepage && !heroAnimationPlayed) {
+            // Homepage entry via Barba with intro not played - run intro sequence
+            console.log('🏠 [BARBA ENTER] Homepage detected, intro not played - running intro');
+            
+            // Find items to animate
+            const projectsListItems = data.next.container.querySelectorAll('.projects_list .w-dyn-item');
+            const sliderNavItems = document.querySelectorAll('.slider_nav_wrap > *');
+            
+            if (projectsListItems.length > 0) {
+              gsap.set(projectsListItems, { opacity: 0, y: 30 });
+              gsap.to(projectsListItems, {
+                opacity: 1,
+                y: 0,
+                duration: 0.6,
+                stagger: 0.1,
+                ease: "power2.out",
+                delay: 0.3  // Small delay after page fade in
+              });
+            }
+            
+            if (sliderNavItems.length > 0) {
+              gsap.set(sliderNavItems, { opacity: 0 });
+              gsap.to(sliderNavItems, {
+                opacity: 1,
+                duration: 0.5,
+                stagger: { each: 0.1, from: "random" },
+                ease: "power2.out",
+                delay: 0.3
+              });
+            }
+            
+            heroAnimationPlayed = true;
+            console.log('✅ [BARBA ENTER] Homepage intro complete, heroAnimationPlayed = true');
+          } else {
+            // Animate sections normally (intro already played or not homepage)
+            animateThumbsSection();
+            animateProjectsLayout();
+            
+            // About page animation - only if .about_id_wrap exists
+            if (data.next.container.querySelector('.about_id_wrap')) {
+              animateAboutPage();
+            }
+            
+            // Imprint page animation - only if .imprint_id_wrap exists
+            if (data.next.container.querySelector('.imprint_id_wrap')) {
+              animateImprintPage();
+            }
+          }
           
           // Initialize details panel animations for new page
           initializeDetailsPanelAnimations();
@@ -1693,9 +1669,6 @@ function initializeBarba() {
              window.scrollTo(0, 0);
              console.log(`🔝 Starting at top of page (not returning from project)`);
            }
-           
-           // Update nav links visibility for new page (pass path from Barba data)
-           updateNavLinksVisibility(data.next.url.path);
          }
        }
     ],
@@ -1721,6 +1694,20 @@ function initializeBarba() {
         afterEnter() {
           console.log('🎨 Studio page loaded');
           animateIndexPage(); // Uses same animation as index page since it has .index_item elements
+        }
+      },
+      {
+        namespace: 'about',
+        afterEnter() {
+          console.log('📋 About page loaded');
+          // Animation handled in enter() based on .about_id_wrap presence
+        }
+      },
+      {
+        namespace: 'imprint',
+        afterEnter() {
+          console.log('📋 Imprint page loaded');
+          // Animation handled in enter() based on .imprint_id_wrap presence
         }
       }
     ]
@@ -1861,8 +1848,8 @@ window.testCustomCursor = function() {
   console.log('Move your mouse to test if mousemove listener is working...');
   
   // Test label update
-  updateCursorLabel("TEST", true);
-  setTimeout(() => updateCursorLabel("", false), 2000);
+  updateCursorLabel("TEST");
+  setTimeout(() => updateCursorLabel(""), 2000);
   
   console.log('✅ Cursor test initiated. Watch console for mouse movement.');
 };
@@ -2278,7 +2265,9 @@ function closeDetailsPanel() {
  */
 let sliderOverviewState = {
   isOverviewMode: false,
-  isAnimating: false
+  isAnimating: false,
+  targetSlide: null,    // Store target slide when clicking in overview
+  clickedSlide: null    // Store clicked slide element for special animation
 };
 
 /**
@@ -2297,6 +2286,9 @@ function destroySliderOverviewAnimations() {
   const $swiper = $('.swiper');
   const $swiperWrapper = $('.swiper-wrapper');
   const $overviewBtn = $('#Overview');
+  
+  // CRITICAL: Remove overview-mode from body
+  document.body.classList.remove('overview-mode');
   
   if ($swiper.length && $swiperWrapper.length) {
     // Remove all overview classes
@@ -2410,16 +2402,37 @@ function initializeSliderOverviewAnimations() {
     const slideIndex = $(this).index();
     console.log(`🖼️ [OVERVIEW NAV] Clicked on thumbnail for slide index: ${slideIndex}`);
     
-    // Use the exposed slider controls to go to the correct slide (without animation)
-    if (sliderInstance && sliderInstance.goToSlide) {
-      sliderInstance.goToSlide(slideIndex, false);
-      console.log(`✅ [OVERVIEW NAV] Navigated to slide ${slideIndex}`);
-    } else {
-      console.warn('❌ [OVERVIEW NAV] No slider instance available');
-    }
+    // Store target slide and clicked element - for special animation handling
+    sliderOverviewState.targetSlide = slideIndex;
+    sliderOverviewState.clickedSlide = this;  // Store the clicked slide element
     
-    // Deactivate overview mode to return to the slider
+    // Deactivate overview mode (navigation happens during the animation)
     deactivateOverviewMode();
+  });
+  
+  // STEP 6: Set up hover effect for images in overview mode (scale up 110%)
+  // Uses same timing as thumbs hover: duration 0.3s, ease power2.out
+  console.log('🎨 [OVERVIEW INIT] Step 6: Setting up image hover scale effect...');
+  $(document).on('mouseenter.overviewHover', '.swiper_img_wrap', function() {
+    if (!sliderOverviewState.isOverviewMode) return;
+    
+    gsap.killTweensOf(this);
+    gsap.to(this, {
+      scale: 1.1,
+      duration: 0.3,
+      ease: "power2.out"
+    });
+  });
+  
+  $(document).on('mouseleave.overviewHover', '.swiper_img_wrap', function() {
+    if (!sliderOverviewState.isOverviewMode) return;
+    
+    gsap.killTweensOf(this);
+    gsap.to(this, {
+      scale: 1,
+      duration: 0.3,
+      ease: "power2.out"
+    });
   });
   
   console.log('🎉 [OVERVIEW INIT] ===== SLIDER OVERVIEW TOGGLE READY! =====');
@@ -2474,35 +2487,40 @@ function activateOverviewMode() {
   console.log('🎭 [OVERVIEW ON] Step 1: Simple smooth transition to grid...');
   
   // ANIMATION SEQUENCE:
-  // 1. Fade out slides with scale effect
+  // 1. Fade out slides with scale effect (smooth exit)
   activateTimeline.to($slides, {
-    scale: 0.9,
+    scale: 0.85,
     opacity: 0,
-    duration: 0.5,
-    stagger: 0.05,
+    duration: 0.4,
+    stagger: 0.03,
     ease: 'power2.inOut',
     onStart: () => console.log('   📉 [OVERVIEW ON] Fading out slides for transition'),
     onComplete: () => {
       console.log('   ✅ [OVERVIEW ON] Slides faded out');
       
-      // 2. Reset wrapper position while slides are invisible (no visual jump)
+      // 2. LOCK invisible state before layout changes
+      gsap.set($slides, { opacity: 0, scale: 0.85 });
+      
+      // 3. Reset wrapper position while slides are invisible (no visual jump)
       gsap.set($swiperWrapper, { x: '0%' });
       console.log('   🔄 [OVERVIEW ON] Wrapper position reset for grid layout');
       
-      // 3. Add classes and update layout (happens instantly when slides are hidden)
+      // 4. Add classes and update layout (happens instantly when slides are hidden)
       $swiperWrapper.addClass('is-overview');
       $swiper.addClass('overview-active');
       $overviewBtn.addClass('active');
       console.log('   🏷️ [OVERVIEW ON] Classes added for grid layout');
       
-      // 4. Stagger slides back in
-      gsap.to($slides, {
-        scale: 1,
-        opacity: 1,
-        y: 0,
-        duration: 0.6,
-        ease: 'power2.out',
-        stagger: 0.1
+      // 5. Small delay to let layout settle, then stagger slides back in
+      gsap.delayedCall(0.05, () => {
+        console.log('   🎬 [OVERVIEW ON] Animating slides back in...');
+        gsap.to($slides, {
+          scale: 1,
+          opacity: 1,
+          duration: 0.5,
+          ease: 'power2.out',
+          stagger: 0.06
+        });
       });
     }
   }, 0);
@@ -2517,16 +2535,26 @@ function activateOverviewMode() {
 function deactivateOverviewMode() {
   console.log('🎠 [OVERVIEW OFF] ==================== DEACTIVATING OVERVIEW MODE ====================');
   
-  // Set state IMMEDIATELY
+  // Set animating state but keep isOverviewMode TRUE until animations complete
   sliderOverviewState.isAnimating = true;
-  sliderOverviewState.isOverviewMode = false; // State updated on completion
+  // NOTE: isOverviewMode stays TRUE until fade out completes - this keeps CSS layout intact
   
-  // --- DEBUG: Remove body class using Vanilla JS for reliability ---
-  console.log("   - Will attempt to remove 'overview-mode' from body...");
-  console.log("   - Class list BEFORE:", document.body.className);
-  document.body.classList.remove('overview-mode');
-  console.log("   - Class list AFTER:", document.body.className);
-  console.log("   - Successfully removed 'overview-mode' from body.");
+  // Kill any existing animations on slides to prevent conflicts
+  const $allSlides = $('.swiper-slide');
+  gsap.killTweensOf($allSlides);
+  gsap.killTweensOf('.swiper_img_wrap');
+  
+  // Get clicked slide's image to preserve its hover scale
+  const clickedSlide = sliderOverviewState.clickedSlide;
+  const $clickedImgWrap = clickedSlide ? $(clickedSlide).find('.swiper_img_wrap') : null;
+  
+  // Reset OTHER images' scale - keep clicked one at hover size (1.1)
+  if ($clickedImgWrap && $clickedImgWrap.length) {
+    const $otherImgWraps = $('.swiper_img_wrap').not($clickedImgWrap);
+    gsap.set($otherImgWraps, { scale: 1 });
+  } else {
+    gsap.set('.swiper_img_wrap', { scale: 1 });
+  }
 
   const $overviewBtn = $('#Overview');
   const $swiper = $('.swiper');
@@ -2554,45 +2582,78 @@ function deactivateOverviewMode() {
   console.log('🎭 [OVERVIEW OFF] Step 1: Fading out grid to reveal slider...');
   
   const sliderInstance = sliderInstances.length > 0 ? sliderInstances[0] : null;
+  // clickedSlide already defined above for hover scale preservation
+  
+  // Separate clicked slide from others for different animation
+  const $otherSlides = clickedSlide 
+    ? $slides.not(clickedSlide) 
+    : $slides;
 
   // ANIMATION SEQUENCE:
-  // 1. Fade out all the slides in the grid
-  deactivateTimeline.to($slides, {
-    duration: 0.4,
+  // 1a. Fade out OTHER slides with scale down (smooth exit)
+  deactivateTimeline.to($otherSlides, {
+    duration: 0.35,
     opacity: 0,
-    scale: 0.9,
+    scale: 0.85,
     ease: 'power2.inOut',
-    stagger: 0.05,
-    onComplete: () => {
-      // 2. After they are faded out, change the classes
-      $swiperWrapper.removeClass('is-overview');
-      $swiper.removeClass('overview-active');
-      $overviewBtn.removeClass('active');
-      console.log('   🏷️ [OVERVIEW OFF] Classes removed, slider layout restored.');
+    stagger: 0.02
+  }, 0);
+  
+  // 1b. Clicked slide fades out LAST, NO scale (stays big until gone)
+  if (clickedSlide) {
+    deactivateTimeline.to(clickedSlide, {
+      duration: 0.3,
+      opacity: 0,
+      ease: 'power2.inOut'
+    }, 0.2);  // Start slightly later so it fades last
+  }
+  
+  // 2. After all fade out, change layout
+  deactivateTimeline.add(() => {
+    console.log('   ✅ [OVERVIEW OFF] Fade out complete, now changing layout...');
+    
+    // Clear clicked slide reference
+    sliderOverviewState.clickedSlide = null;
+    
+    // LOCK in the invisible state before layout changes
+    gsap.set($slides, { opacity: 0, scale: 1 });  // Reset scale to 1 for slider mode
+    gsap.set($navButtons, { opacity: 0 });
+    
+    // NOW remove body class and other classes (layout changes while hidden)
+    document.body.classList.remove('overview-mode');
+    sliderOverviewState.isOverviewMode = false;
+    $swiperWrapper.removeClass('is-overview');
+    $swiper.removeClass('overview-active');
+    $overviewBtn.removeClass('active');
+    console.log('   🏷️ [OVERVIEW OFF] Classes removed, slider layout restored.');
 
-      // Resync the slider's visual position instantly
-      if (sliderInstance) {
-        sliderInstance.goToSlide(sliderInstance.getCurrentSlide(), false);
-      }
-
-      // 3. Explicitly animate FROM invisible TO visible using fromTo for robustness
-      gsap.fromTo([$slides, $navButtons], 
-        { // FROM state
-          opacity: 0,
-          scale: 0.9
-        }, 
-        { // TO state
-          opacity: 1,
-          scale: 1,
-          duration: 0.5,
-          ease: 'power2.out',
-          stagger: {
-            each: 0.05,
-            from: "start"
-          }
-        }
-      );
+    // Navigate to target slide (set when clicking on a slide in overview)
+    // or resync to current slide if toggling via Overview button
+    if (sliderInstance) {
+      const targetSlide = sliderOverviewState.targetSlide !== null 
+        ? sliderOverviewState.targetSlide 
+        : sliderInstance.getCurrentSlide();
+      sliderInstance.goToSlide(targetSlide, false);
+      console.log(`   🎯 [OVERVIEW OFF] Navigated to slide ${targetSlide}`);
+      sliderOverviewState.targetSlide = null;  // Clear for next time
     }
+
+    // Small delay to let layout settle, then animate slides back in
+    gsap.delayedCall(0.05, () => {
+      console.log('   🎬 [OVERVIEW OFF] Animating slides back in...');
+      gsap.to($slides, {
+        opacity: 1,
+        scale: 1,
+        duration: 0.5,
+        ease: 'power2.out'
+      });
+      gsap.to($navButtons, {
+        opacity: 1,
+        duration: 0.4,
+        ease: 'power2.out',
+        delay: 0.2
+      });
+    });
   });
 }
 
@@ -2813,17 +2874,17 @@ function animateProjectsLayout() {
     y: 30
   });
   
-  // Animate each item with stagger
+  // Animate each item with stagger (delay to start after container fade-in)
   gsap.to(items, {
     opacity: 1,
     y: 0,
-    duration: 0.6,
+    duration: 0.4,
     stagger: {
-      each: 0.1,
+      each: 0.05,
       from: "start"
     },
     ease: "power2.out",
-    delay: 0.2,
+    delay: 0.4,  // Wait for container to become visible
     onComplete: () => {
       console.log('✅ [PROJECTS LAYOUT] Fade-in animation complete');
     }
@@ -2860,17 +2921,17 @@ function animateThumbsSection() {
     y: 30
   });
   
-  // Animate each item with stagger
+  // Animate each item with stagger (delay to start after container fade-in)
   gsap.to(items, {
     opacity: 1,
     y: 0,
-    duration: 0.6,
+    duration: 0.4,
     stagger: {
-      each: 0.1,
+      each: 0.05,
       from: "start"
     },
     ease: "power2.out",
-    delay: 0.2,
+    delay: 0.4,  // Wait for container to become visible
     onComplete: () => {
       console.log('✅ [THUMBS] Fade-in animation complete');
     }
@@ -2910,6 +2971,92 @@ function animateIndexPage() {
   // CRITICAL: Also initialize scroll animations for SVGs
   // COMMENTED OUT - SVG scroll animations disabled
   // initializeSVGScrollAnimations();
+}
+
+/**
+ * ABOUT PAGE FADE-IN ANIMATION
+ * Animates content wrappers inside .about_id_wrap with staggered fade-in
+ */
+function animateAboutPage(isInitialLoad = false) {
+  console.log('📋 [ABOUT] Animating about page elements...');
+  
+  // Target .u-content-wrapper elements inside .about_id_wrap for deeper stagger
+  const aboutItems = document.querySelectorAll('.about_id_wrap .u-content-wrapper');
+  
+  if (aboutItems.length === 0) {
+    console.log('ℹ️ [ABOUT] No .u-content-wrapper elements found in .about_id_wrap');
+    return;
+  }
+  
+  console.log(`✅ [ABOUT] Found ${aboutItems.length} content wrappers - animating with stagger...`);
+  
+  // Set initial state - hidden and slightly below
+  gsap.set(aboutItems, {
+    opacity: 0,
+    y: 30
+  });
+  
+  // Delay: longer on initial load (page fade in), shorter on Barba transition
+  const animDelay = isInitialLoad ? 0.2 : 0.4;
+  
+  // Animate each item with stagger
+  gsap.to(aboutItems, {
+    opacity: 1,
+    y: 0,
+    duration: 0.5,
+    stagger: {
+      each: 0.15,
+      from: "start"
+    },
+    ease: "power2.out",
+    delay: animDelay,
+    onComplete: () => {
+      console.log('✅ [ABOUT] Fade-in animation complete');
+    }
+  });
+}
+
+/**
+ * IMPRINT PAGE FADE-IN ANIMATION
+ * Animates content wrappers inside .imprint_id_wrap with staggered fade-in
+ */
+function animateImprintPage(isInitialLoad = false) {
+  console.log('📋 [IMPRINT] Animating imprint page elements...');
+  
+  // Target .u-content-wrapper elements inside .imprint_id_wrap for deeper stagger
+  const imprintItems = document.querySelectorAll('.imprint_id_wrap .u-content-wrapper');
+  
+  if (imprintItems.length === 0) {
+    console.log('ℹ️ [IMPRINT] No .u-content-wrapper elements found in .imprint_id_wrap');
+    return;
+  }
+  
+  console.log(`✅ [IMPRINT] Found ${imprintItems.length} content wrappers - animating with stagger...`);
+  
+  // Set initial state - hidden and slightly below
+  gsap.set(imprintItems, {
+    opacity: 0,
+    y: 30
+  });
+  
+  // Delay: longer on initial load (page fade in), shorter on Barba transition
+  const animDelay = isInitialLoad ? 0.2 : 0.4;
+  
+  // Animate each item with stagger
+  gsap.to(imprintItems, {
+    opacity: 1,
+    y: 0,
+    duration: 0.5,
+    stagger: {
+      each: 0.15,
+      from: "start"
+    },
+    ease: "power2.out",
+    delay: animDelay,
+    onComplete: () => {
+      console.log('✅ [IMPRINT] Fade-in animation complete');
+    }
+  });
 }
 
 function animateContactPage() {

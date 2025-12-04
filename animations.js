@@ -217,6 +217,10 @@ function setupCustomCursorListeners() {
   });
   
   $(document).on('click.sliderClose', '.slider_wrap', function(e) {
+    // Disable click-to-close on mobile - only button navigation
+    const isDesktop = window.innerWidth >= 992;
+    if (!isDesktop) return;
+    
     if (sliderOverviewState.isOverviewMode) return;
     const $target = $(e.target);
     if ($target.closest('.slider_ghost_wrap').length === 0) {

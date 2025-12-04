@@ -12,6 +12,44 @@ console.log('🎨 Animations.js loaded');
   document.head.appendChild(style);
   console.log('🎨 Injected opacity:0 CSS to prevent flash');
   
+  // Inject morphing blob CSS for cursor (GPU accelerated)
+  const blobStyle = document.createElement('style');
+  blobStyle.textContent = `
+    @keyframes morphBlob {
+      0%, 100% {
+        border-radius: 70% 30% 30% 70% / 60% 40% 60% 40%;
+      }
+      25% {
+        border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
+      }
+      50% {
+        border-radius: 50% 50% 30% 70% / 70% 30% 70% 30%;
+      }
+      75% {
+        border-radius: 70% 30% 50% 50% / 30% 70% 30% 70%;
+      }
+    }
+    
+    .projects_mouse_label {
+      animation: morphBlob 5s ease-in-out infinite;
+      will-change: border-radius;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 28px;
+      box-sizing: border-box;
+    }
+    
+    .projects_mouse_label .label_text {
+      white-space: nowrap;
+      text-align: center;
+    }
+  `;
+  document.head.appendChild(blobStyle);
+  console.log('🎨 Injected morphing blob CSS for cursor');
+  
   // IMMEDIATE SCROLL TO TOP - Disable browser scroll restoration and scroll to top
   // This runs as early as possible to prevent seeing wrong scroll position
   if ('scrollRestoration' in history) {

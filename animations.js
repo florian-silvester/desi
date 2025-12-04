@@ -84,6 +84,9 @@ let scrollPositions = {};
 // Track previous page for "Close" navigation (not history.back which is unreliable)
 let previousPageUrl = '/';
 
+// Track clicked thumb item for custom leave animation
+let clickedThumbItem = null;
+
 // ================================================================================
 // 🔄 SCROLL POSITION HELPERS (Modal-like behavior)
 // ================================================================================
@@ -166,6 +169,8 @@ function setupCustomCursorListeners() {
   // Clean up any old hover listeners first
   $(document).off('mouseenter.customCursor mouseleave.customCursor');
   $(document).off('click.sliderClose mouseenter.sliderClose mousemove.sliderClose');
+  $(document).off('mouseenter.navHover mouseleave.navHover');
+  $(document).off('click.thumbsClick');
   
   // ========================================
   // SLIDER (.slider_wrap) - Show slide counter
@@ -226,6 +231,33 @@ function setupCustomCursorListeners() {
   // THUMBS (.thumbs_id_wrap) - handled by initializeThumbsProjectsListHoverAnimations
   // Shows project names on hover
   // ========================================
+
+  // ========================================
+  // NAV LINKS & FOOTER LINKS - children move up on hover
+  // ========================================
+  $(document).on('mouseenter.navHover', '.nav_link, .footer_link', function() {
+    gsap.to($(this).children(), {
+      y: -5,
+      duration: 0.15,
+      ease: "power2.out"
+    });
+  });
+  
+  $(document).on('mouseleave.navHover', '.nav_link, .footer_link', function() {
+    gsap.to($(this).children(), {
+      y: 0,
+      duration: 0.15,
+      ease: "power2.out"
+    });
+  });
+
+  // ========================================
+  // THUMBS CLICK TRACKING - for custom leave animation
+  // ========================================
+  $(document).on('click.thumbsClick', '.thumbs_id_wrap .projects_item', function() {
+    clickedThumbItem = this;
+    console.log('📍 [THUMBS CLICK] Stored clicked thumb item for leave animation');
+  });
 
   console.log('✅ [CURSOR HOVERS] Hover listeners are ready (thumbs + slider only).');
 }
@@ -1505,7 +1537,53 @@ function initializeBarba() {
           // its mousemove listener will persist.
           $(document).off('mouseenter.customCursor mouseleave.customCursor');
 
-          // Simple fade out
+          // Check if we clicked a thumbs item - do custom staggered leave
+          const $thumbsItems = $(data.current.container).find('.thumbs_id_wrap .projects_item');
+          
+          if (clickedThumbItem && $thumbsItems.length > 0) {
+            console.log('🎬 [LEAVE] Custom thumbs leave animation - clicked item fades last');
+            
+            const $otherItems = $thumbsItems.not(clickedThumbItem);
+            const $clickedItem = $(clickedThumbItem);
+            
+            // Create timeline for coordinated animation
+            const leaveTimeline = gsap.timeline();
+            
+            // 1. Other items scale down + fade out
+            if ($otherItems.length > 0) {
+              leaveTimeline.to($otherItems, {
+                opacity: 0,
+                scale: 0.85,
+                duration: 0.35,
+                ease: 'power2.inOut',
+                stagger: 0.02
+              }, 0);
+            }
+            
+            // 2. Clicked item fades out LAST (no scale, stays at hover size)
+            leaveTimeline.to($clickedItem, {
+              opacity: 0,
+              duration: 0.3,
+              ease: 'power2.inOut'
+            }, 0.15);
+            
+            // 3. Fade out container after items
+            leaveTimeline.to(data.current.container, {
+              opacity: 0,
+              duration: 0.3,
+              ease: "power2.out"
+            }, 0.35);
+            
+            // Clear the clicked item reference
+            clickedThumbItem = null;
+            
+            return leaveTimeline;
+          }
+          
+          // Clear clicked item reference (if any)
+          clickedThumbItem = null;
+
+          // Default: Simple fade out
           return gsap.to(data.current.container, {
             opacity: 0,
             duration: 0.5,

@@ -1137,31 +1137,44 @@ function initializeSliders() {
         ease: "power2.inOut"  // Snappier: was "power2.out"
       });
       
-      // With looping enabled, buttons are never disabled
-      $prevBtn.removeClass('disabled');
-      $nextBtn.removeClass('disabled');
+      // Semantic hook only - #bw/#ffwd are invisible hit areas with no .disabled styling
+      $prevBtn.toggleClass('disabled', currentSlide === 0);
+      $nextBtn.toggleClass('disabled', currentSlide === maxSlide);
       
       console.log(`�� Slider ${index + 1} moved to slide ${currentSlide} (offset: ${offset}%)`);
     }
     
     // Navigation handlers
+    // The sequence stops at both ends rather than wrapping, because wrapping tweens the
+    // wrapper across every slide at once and reads as a rewind.
+    const BOUNCE_PERCENT = 3;
+    
+    // Nudge the strip and spring back to signal there is nothing further this way.
+    // Shared by swipe, buttons and keyboard so every input behaves the same at the edge.
+    function bounceAtEdge(direction) {
+      const base = -(currentSlide * slideWidth);
+      
+      gsap.killTweensOf($wrapper);
+      gsap.timeline()
+        .to($wrapper, { x: (base + direction * BOUNCE_PERCENT) + '%', duration: 0.15, ease: "power2.out" })
+        .to($wrapper, { x: base + '%', duration: 0.35, ease: "power2.out" });
+    }
+    
     function goToPrev() {
-      if (currentSlide > 0) {
-        currentSlide--;
-      } else {
-        // LOOP: Go to last slide when at first slide
-        currentSlide = maxSlide;
+      if (currentSlide === 0) {
+        bounceAtEdge(1);
+        return;
       }
+      currentSlide--;
       updateSlider();
     }
     
     function goToNext() {
-      if (currentSlide < maxSlide) {
-        currentSlide++;
-      } else {
-        // LOOP: Go to first slide when at last slide
-        currentSlide = 0;
+      if (currentSlide === maxSlide) {
+        bounceAtEdge(-1);
+        return;
       }
+      currentSlide++;
       updateSlider();
     }
     

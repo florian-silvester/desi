@@ -12,29 +12,10 @@ console.log('🎨 Animations.js loaded');
   document.head.appendChild(style);
   console.log('🎨 Injected opacity:0 CSS to prevent flash');
   
-  // Inject morphing blob CSS for cursor (GPU accelerated)
+  // Inject cursor label CSS
   const blobStyle = document.createElement('style');
   blobStyle.textContent = `
-    @keyframes morphBlob {
-      0%, 100% {
-        border-radius: 70% 30% 30% 70% / 60% 40% 60% 40%;
-      }
-      25% {
-        border-radius: 30% 70% 70% 30% / 40% 60% 40% 60%;
-      }
-      50% {
-        border-radius: 50% 50% 30% 70% / 70% 30% 70% 30%;
-      }
-      75% {
-        border-radius: 70% 30% 50% 50% / 30% 70% 30% 70%;
-      }
-    }
-    
     .projects_mouse_label {
-      animation: morphBlob 5s ease-in-out infinite;
-      will-change: border-radius;
-      transform: translateZ(0);
-      backface-visibility: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -48,7 +29,7 @@ console.log('🎨 Animations.js loaded');
     }
   `;
   document.head.appendChild(blobStyle);
-  console.log('🎨 Injected morphing blob CSS for cursor');
+  console.log('🎨 Injected cursor label CSS');
   
   // IMMEDIATE SCROLL TO TOP - Disable browser scroll restoration and scroll to top
   // This runs as early as possible to prevent seeing wrong scroll position
@@ -65,14 +46,6 @@ console.log('🎨 Animations.js loaded');
     sliderNavItems.forEach(item => item.style.opacity = '0');
   }
 })();
-
-// SVGs start hidden via Webflow (opacity: 0), just set the y position
-// COMMENTED OUT - Intro animation disabled
-/*
-gsap.set(['.studio_svg', '.penzlien_svg'], {
-  y: 30
-});
-*/
 
 /*
 🎯 QUICK REFERENCE - HOVER ANIMATIONS:
@@ -183,19 +156,6 @@ let customCursorState = {
   cursor: null,
   labelText: null
 };
-
-/**
- * CLEANUP FUNCTION FOR CUSTOM CURSOR
- * Removes all cursor event listeners and resets state
- * Called before page transitions and when reinitializing
- */
-function destroyCustomCursor() {
-  console.log('🧹 [CURSOR CLEANUP] Full cursor teardown...');
-  document.removeEventListener('mousemove', handleCursorMove);
-  $(document).off('mouseenter.customCursor mouseleave.customCursor');
-  customCursorState = { isInitialized: false, cursor: null, labelText: null };
-  console.log('✅ [CURSOR CLEANUP] Cursor completely destroyed.');
-}
 
 /**
  * LIGHTWEIGHT SETUP FOR BARBA TRANSITIONS  
@@ -601,13 +561,6 @@ $(document).ready(function() {
       animateIndexPage();
     }
     
-    // Initialize SVG scroll animations if SVGs exist
-    // COMMENTED OUT - Intro animation disabled
-    /*
-    if (document.querySelector('.studio_svg') || document.querySelector('.penzlien_svg')) {
-      initializeSVGScrollAnimations();
-    }
-    */
   }, 100);
   
   // Initialize Barba after a small delay
@@ -855,9 +808,6 @@ function initializeThumbsProjectsListHoverAnimations() {
     const $imgWrap = $(this).find('.projects_img_wrap');
     const $textWrap = $(this).find('.projects_text_wrap');
     
-    // Raise z-index so hovered item appears on top
-    $(this).css('z-index', 10);
-    
     if ($imgWrap.length) {
       gsap.killTweensOf($imgWrap);
       
@@ -878,9 +828,6 @@ function initializeThumbsProjectsListHoverAnimations() {
   // Mouse leave - scale back to normal and reset cursor label
   $(document).on('mouseleave.thumbsListHover', '.thumbs_id_wrap .projects_list .projects_item', function() {
     const $imgWrap = $(this).find('.projects_img_wrap');
-    
-    // Reset z-index
-    $(this).css('z-index', '');
     
     if ($imgWrap.length) {
       gsap.killTweensOf($imgWrap);
@@ -1142,7 +1089,7 @@ function initializeSliders() {
     
     let currentSlide = 0;
     const totalSlides = $slides.length;
-    let maxSlide = Math.max(0, totalSlides - slidesPerView);
+    const maxSlide = Math.max(0, totalSlides - slidesPerView);
     
     console.log(`📊 Slider ${index + 1} config:`, {
       slidesPerView,
@@ -1289,30 +1236,134 @@ function initializeSliders() {
       if (e.key === 'ArrowRight') goToNext();
     });
     
+    // ----------------------------------------------------------------------------
+    // TOUCH SWIPE (mobile)
+    // ----------------------------------------------------------------------------
+    // Bound to .slider_wrap rather than .swiper because #bw/#ffwd are absolutely
+    // positioned over the slides, so gestures starting on them never reach .swiper.
+    // Native listeners are used instead of jQuery so touchmove can be registered
+    // non-passive, which is required to cancel page scroll mid-gesture.
+    const $swipeArea = $slider.closest('.slider_wrap').length ? $slider.closest('.slider_wrap') : $slider;
+    const swipeEl = $swipeArea[0];
+    
+    const AXIS_LOCK_PX = 8;        // movement before committing to horizontal or vertical
+    const SWIPE_RATIO = 0.15;      // share of slider width that commits to a slide change
+    const EDGE_RESISTANCE = 0.35;
+    const CLICK_SUPPRESS_MS = 400;
+    
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchDeltaX = 0;
+    let isSwiping = false;
+    let swipeAxis = null;
+    let swipeEndedAt = 0;
+    
+    function swipeEnabled() {
+      return window.innerWidth < 992 &&
+        !sliderOverviewState.isOverviewMode &&
+        !sliderOverviewState.isAnimating;
+    }
+    
+    function dragWrapperTo(deltaX) {
+      const width = $wrapper[0].offsetWidth || 1;
+      let travel = (deltaX / width) * slideWidth;
+      
+      // Dampen movement that would expose empty space before the first or after the last slide
+      if ((currentSlide === 0 && travel > 0) || (currentSlide === maxSlide && travel < 0)) {
+        travel *= EDGE_RESISTANCE;
+      }
+      
+      gsap.set($wrapper, { x: (-(currentSlide * slideWidth) + travel) + '%' });
+    }
+    
+    function onTouchStart(e) {
+      swipeEndedAt = 0;
+      if (!swipeEnabled() || e.touches.length !== 1) return;
+      
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchDeltaX = 0;
+      isSwiping = false;
+      swipeAxis = null;
+      gsap.killTweensOf($wrapper);
+    }
+    
+    function onTouchMove(e) {
+      if (!swipeEnabled() || e.touches.length !== 1) return;
+      
+      const dx = e.touches[0].clientX - touchStartX;
+      const dy = e.touches[0].clientY - touchStartY;
+      
+      if (!swipeAxis) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < AXIS_LOCK_PX) return;
+        swipeAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        isSwiping = swipeAxis === 'x';
+      }
+      
+      // Vertical gestures stay with the page scroll
+      if (swipeAxis !== 'x') return;
+      
+      touchDeltaX = dx;
+      e.preventDefault();
+      dragWrapperTo(dx);
+    }
+    
+    function onTouchEnd() {
+      if (!isSwiping) return;
+      
+      const threshold = Math.max(40, ($wrapper[0].offsetWidth || 1) * SWIPE_RATIO);
+      
+      if (touchDeltaX <= -threshold) {
+        goToNext();
+      } else if (touchDeltaX >= threshold) {
+        goToPrev();
+      } else {
+        updateSlider();
+      }
+      
+      swipeEndedAt = Date.now();
+      isSwiping = false;
+      swipeAxis = null;
+      touchDeltaX = 0;
+    }
+    
+    function onTouchCancel() {
+      if (!isSwiping) return;
+      
+      updateSlider();
+      isSwiping = false;
+      swipeAxis = null;
+      touchDeltaX = 0;
+    }
+    
+    function onClickCapture(e) {
+      // Some browsers still synthesize a click after a swipe, which would reach the
+      // #bw/#ffwd overlays and advance the slider a second time.
+      if (!swipeEndedAt || Date.now() - swipeEndedAt > CLICK_SUPPRESS_MS) return;
+      
+      swipeEndedAt = 0;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    swipeEl.addEventListener('touchstart', onTouchStart, { passive: true });
+    swipeEl.addEventListener('touchmove', onTouchMove, { passive: false });
+    swipeEl.addEventListener('touchend', onTouchEnd);
+    swipeEl.addEventListener('touchcancel', onTouchCancel);
+    swipeEl.addEventListener('click', onClickCapture, true);
+    
+    console.log(`👆 Swipe navigation bound to .${swipeEl.className.split(' ')[0]} for slider ${index + 1}`);
+    
     // Handle window resize
     function handleResize() {
-      const newIsMobile = window.innerWidth < 992;
-      const newSlidesPerView = newIsMobile ? 1 : 2;
-      const newSlideWidth = 100 / newSlidesPerView;
-      maxSlide = Math.max(0, totalSlides - newSlidesPerView);
+      // Overview mode lays the slides out as a grid, so leave its transform alone
+      if (sliderOverviewState.isOverviewMode) return;
       
-      // Update slide widths via CSS
-      if (newIsMobile) {
-        $slides.css('width', '100%');
-      } else {
-        $slides.css('width', '50%');
-      }
+      // Slide widths are pinned to 100% by the injected CSS at every breakpoint;
+      // setting them inline here would leak into overview mode and break the grid.
+      gsap.set($wrapper, { x: -(currentSlide * slideWidth) + '%' });
       
-      // Adjust current slide if needed (with looping, just ensure it's within bounds)
-      if (currentSlide > maxSlide) {
-        currentSlide = maxSlide;
-      }
-      
-      // Update position
-      const offset = -(currentSlide * newSlideWidth);
-      gsap.set($wrapper, { x: offset + '%' });
-      
-      console.log(`📐 Slider ${index + 1} resized: ${newSlidesPerView} slides per view (looping enabled)`);
+      console.log(`📐 Slider ${index + 1} resized: realigned to slide ${currentSlide}`);
     }
     
     $(window).on('resize.slider' + index, handleResize);
@@ -1345,6 +1396,11 @@ function initializeSliders() {
       }
       $(document).off('keydown.slider' + index);
       $(window).off('resize.slider' + index);
+      swipeEl.removeEventListener('touchstart', onTouchStart);
+      swipeEl.removeEventListener('touchmove', onTouchMove);
+      swipeEl.removeEventListener('touchend', onTouchEnd);
+      swipeEl.removeEventListener('touchcancel', onTouchCancel);
+      swipeEl.removeEventListener('click', onClickCapture, true);
       console.log(`🧹 Slider ${index + 1} cleaned up`);
     };
     
@@ -1579,7 +1635,6 @@ function initializeBarba() {
           destroyThumbsProjectsListHoverAnimations();
           destroyDetailsPanelAnimations();
           destroySliderOverviewAnimations();
-          // destroySVGScrollAnimations(); // COMMENTED OUT - Intro animation disabled
           
           // IMPORTANT: Only remove hover listeners. The cursor element and
           // its mousemove listener will persist.
@@ -1714,8 +1769,8 @@ function initializeBarba() {
             console.log('✅ [BARBA ENTER] Homepage intro complete, heroAnimationPlayed = true');
           } else {
             // Animate sections normally (intro already played or not homepage)
-            animateThumbsSection();
-            animateProjectsLayout();
+          animateThumbsSection();
+          animateProjectsLayout();
             
             // About page animation - only if .about_id_wrap exists
             if (data.next.container.querySelector('.about_id_wrap')) {
@@ -1748,10 +1803,6 @@ function initializeBarba() {
             
             // Pass scroll info to animation function
             animateHomepageElements('Barba transition', storedScrollPosition);
-            
-            // CRITICAL: Also initialize scroll animations for SVGs
-            // COMMENTED OUT - SVG scroll animations disabled
-            // initializeSVGScrollAnimations();
           }
 
           // Simple fade in - NO DELAY
@@ -1883,246 +1934,8 @@ function animateSliderEntrance() {
 // If this animation is needed, it should be moved into animateIndexPage() or another
 // page-specific initialization function with proper element existence checks
   
-// ================================================================================
-// 🎨 page load SVGs  
-// ================================================================================
   
   
-
-// ================================================================================
-// 🧪 UTILITY & TEST FUNCTIONS
-// ================================================================================
-
-window.testTransition = function() {
-  console.log('🧪 Testing page transition...');
-  
-  // Simulate a page transition effect
-  gsap.to('.page_wrap', {
-    opacity: 0,
-    scale: 0.95,
-    duration: 0.3,
-    ease: "power2.inOut",
-    onComplete: function() {
-      gsap.to('.page_wrap', {
-        opacity: 1,
-        scale: 1,
-        duration: 0.3,
-        ease: "power2.out"
-      });
-    }
-  });
-};
-
-window.testAnimation = function() {
-  console.log('🧪 Test animation function ready');
-  animateHomePage();
-};
-
-window.testSliders = function() {
-  console.log('🎠 Testing slider initialization...');
-  initializeSliders();
-};
-
-window.testScrollAnimations = function() {
-  console.log('📜 Testing scroll animations...');
-  initializeScrollAnimations();
-};
-
-window.testHoverAnimations = function() {
-  console.log('🧪 [TEST] ==================== TESTING HOVER ANIMATIONS ====================');
-  console.log('🔧 [TEST] Manually triggering hover animation initialization...');
-  initializeProjectHoverAnimations();
-  console.log('✅ [TEST] Test complete - check above logs for detailed setup process');
-};
-
-window.testDetailsPanelAnimations = function() {
-  console.log('🧪 [TEST] ==================== TESTING DETAILS PANEL ANIMATIONS ====================');
-  console.log('🔧 [TEST] Manually triggering details panel animation initialization...');
-  initializeDetailsPanelAnimations();
-  console.log('✅ [TEST] Test complete - check above logs for detailed setup process');
-  console.log('💡 [TEST] If on a detail page, click the "Details" trigger to test opening/closing');
-};
-
-window.testSliderOverviewAnimations = function() {
-  console.log('🧪 [TEST] ==================== TESTING SLIDER OVERVIEW ANIMATIONS ====================');
-  console.log('🔧 [TEST] Manually triggering slider overview animation initialization...');
-  initializeSliderOverviewAnimations();
-  console.log('✅ [TEST] Test complete - check above logs for detailed setup process');
-  console.log('💡 [TEST] If on a detail page with slider, click the "Overview" button to test toggle');
-};
-
-window.testCustomCursor = function() {
-  console.log('🧪 [TEST] ==================== TESTING CUSTOM CURSOR ====================');
-  
-  // Check cursor state
-  console.log('Current state:', customCursorState);
-  
-  const cursor = document.querySelector('.projects_mouse_label');
-  console.log('Cursor element found:', !!cursor);
-  
-  if (!cursor) {
-    console.error('❌ [TEST] Cursor element not found! Check Webflow structure.');
-    return;
-  }
-  
-  // Test if mousemove listener is working
-  const testMove = (e) => {
-    console.log('🖱️ Mouse at:', e.clientX, e.clientY);
-    document.removeEventListener('mousemove', testMove);
-  };
-  document.addEventListener('mousemove', testMove);
-  console.log('Move your mouse to test if mousemove listener is working...');
-  
-  // Test label update
-  updateCursorLabel("TEST");
-  setTimeout(() => updateCursorLabel(""), 2000);
-  
-  console.log('✅ Cursor test initiated. Watch console for mouse movement.');
-};
-
-window.debugCursorState = function() {
-  console.log('🔍 [DEBUG] ==================== CURSOR STATE DEBUG ====================');
-  console.log('State:', customCursorState);
-  
-  const cursor = document.querySelector('.projects_mouse_label');
-  console.log('Cursor element found:', !!cursor);
-  
-  if (cursor) {
-    // Force make visible and test positioning
-    cursor.style.cssText = `
-      position: fixed !important;
-      top: 50px !important;
-      left: 50px !important;
-      background: red !important;
-      padding: 20px !important;
-      z-index: 9999 !important;
-      pointer-events: none !important;
-      display: flex !important;
-      gap: 10px !important;
-      border: 2px solid blue !important;
-    `;
-    
-    const labelText = cursor.querySelector('.label_text');
-    
-    if (labelText) {
-      labelText.textContent = 'DEBUG MODE';
-      labelText.style.cssText = 'color: white !important; font-size: 16px !important;';
-    }
-    
-    console.log('✅ Cursor forced visible with red background and "DEBUG MODE" text');
-    console.log('If you can see this, the cursor element exists and can be styled.');
-    
-    // Test if we can move it with GSAP
-    setTimeout(() => {
-      gsap.to(cursor, { x: 200, y: 200, duration: 1 });
-      console.log('🎯 Testing GSAP movement to 200,200');
-    }, 1000);
-    
-  } else {
-    console.error('❌ Cursor element not found!');
-    console.log('All elements with "mouse" or "label":', document.querySelectorAll('[class*="mouse"], [class*="label"]'));
-  }
-};
-
-// DEBUG: Summary function to explain the hover system
-window.explainHoverSystem = function() {
-  console.log('📚 [EXPLAIN] ==================== HOVER ANIMATION SYSTEM EXPLANATION ====================');
-  console.log('');
-  console.log('🎯 [EXPLAIN] PURPOSE:');
-  console.log('   Creates smooth fade-in/fade-out effects when hovering over project images');
-  console.log('');
-  console.log('🏗️ [EXPLAIN] REQUIRED HTML STRUCTURE:');
-  console.log('   <div class="project_img_wrap">        <!-- TRIGGER: Mouse hover target -->');
-  console.log('     <!-- Your project image content -->');
-  console.log('   </div>');
-  console.log('   <div class="project_img_overlay">     <!-- ANIMATED: Fades in first -->');
-  console.log('     <!-- Overlay content -->');
-  console.log('   </div>');
-  console.log('   <div class="project_thumb_wrap">      <!-- ANIMATED: Fades in second (staggered) -->');
-  console.log('     <!-- Thumbnail content -->');
-  console.log('   </div>');
-  console.log('');
-  console.log('⚡ [EXPLAIN] ANIMATION SEQUENCE:');
-  console.log('   1. Mouse enters .project_img_wrap');
-  console.log('   2. .project_img_overlay fades in (0.3s)');
-  console.log('   3. .project_thumb_wrap fades in (0.3s, starts 0.1s later)');
-  console.log('   4. Mouse leaves .project_img_wrap');
-  console.log('   5. Both elements fade out together (0.2s, quick response)');
-  console.log('');
-  console.log('🎛️ [EXPLAIN] CURRENT SETTINGS:');
-  console.log('   • Fade-in duration: 0.3 seconds');
-  console.log('   • Fade-out duration: 0.2 seconds');
-  console.log('   • Stagger delay: 0.1 seconds');
-  console.log('   • Easing: power2.out (smooth)');
-  console.log('');
-  console.log('🔧 [EXPLAIN] WEBFLOW SETUP REQUIRED:');
-  console.log('   • Set .project_img_overlay initial opacity to 0');
-  console.log('   • Set .project_thumb_wrap initial opacity to 0');
-  console.log('   • Position fixed elements work perfectly with GSAP');
-  console.log('');
-  console.log('🧪 [EXPLAIN] TESTING:');
-  console.log('   • Run testHoverAnimations() to reinitialize');
-  console.log('   • Watch console for detailed hover logs');
-  console.log('   • Look for [HOVER START] and [HOVER END] sections');
-  console.log('==================================================================================');
-};
-
-
-// Test transform origin effect
-window.testOriginEffect = function(x = 25, y = 75) {
-  console.log(`🧪 Testing transform origin effect from ${x}%, ${y}%`);
-  
-  // Set manual click position
-  clickPosition = { x, y };
-  
-  // Test on the actual container that Barba uses
-  const testElement = $('[data-barba="container"]');
-  
-  console.log(`🧪 Testing on element:`, testElement[0]);
-  
-  gsap.set(testElement, {
-    opacity: 0,
-    scale: 0.1,
-    transformOrigin: `${x}% ${y}%`
-  });
-  
-  gsap.to(testElement, {
-    opacity: 1,
-    scale: 1,
-    duration: 0.8,
-    ease: "expo.inOut",
-    onUpdate: function() {
-      console.log(`🧪 Test scale: ${gsap.getProperty(testElement[0], 'scale')}`);
-    },
-    onComplete: () => {
-      console.log('✅ Transform origin test complete');
-    }
-  });
-};
-
-// Force test current page scale
-window.forceTestScale = function() {
-  console.log('🧪 Force testing page scale effect...');
-  
-  const container = $('[data-barba="container"]');
-  
-  // Create dramatic scale effect for testing
-  gsap.fromTo(container, 
-    { 
-      scale: 0.1, 
-      opacity: 0.5,
-      transformOrigin: '25% 75%'
-    },
-    {
-      scale: 1,
-      opacity: 1,
-      duration: 1.2,
-      ease: "expo.inOut",
-      onStart: () => console.log('🧪 Forced scale started'),
-      onComplete: () => console.log('🧪 Forced scale complete')
-    }
-  );
-};
 
 // ================================================================================
 // 📱 DETAILS PANEL ANIMATIONS SYSTEM
@@ -2646,11 +2459,11 @@ function activateOverviewMode() {
       // 5. Small delay to let layout settle, then stagger slides back in
       gsap.delayedCall(0.05, () => {
         console.log('   🎬 [OVERVIEW ON] Animating slides back in...');
-        gsap.to($slides, {
-          scale: 1,
-          opacity: 1,
+      gsap.to($slides, {
+        scale: 1,
+        opacity: 1,
           duration: 0.5,
-          ease: 'power2.out',
+        ease: 'power2.out',
           stagger: 0.06
         });
       });
@@ -2754,14 +2567,14 @@ function deactivateOverviewMode() {
     // NOW remove body class and other classes (layout changes while hidden)
     document.body.classList.remove('overview-mode');
     sliderOverviewState.isOverviewMode = false;
-    $swiperWrapper.removeClass('is-overview');
-    $swiper.removeClass('overview-active');
-    $overviewBtn.removeClass('active');
-    console.log('   🏷️ [OVERVIEW OFF] Classes removed, slider layout restored.');
+      $swiperWrapper.removeClass('is-overview');
+      $swiper.removeClass('overview-active');
+      $overviewBtn.removeClass('active');
+      console.log('   🏷️ [OVERVIEW OFF] Classes removed, slider layout restored.');
 
     // Navigate to target slide (set when clicking on a slide in overview)
     // or resync to current slide if toggling via Overview button
-    if (sliderInstance) {
+      if (sliderInstance) {
       const targetSlide = sliderOverviewState.targetSlide !== null 
         ? sliderOverviewState.targetSlide 
         : sliderInstance.getCurrentSlide();
@@ -2774,15 +2587,15 @@ function deactivateOverviewMode() {
     gsap.delayedCall(0.05, () => {
       console.log('   🎬 [OVERVIEW OFF] Animating slides back in...');
       gsap.to($slides, {
-        opacity: 1,
-        scale: 1,
-        duration: 0.5,
+          opacity: 1,
+          scale: 1,
+          duration: 0.5,
         ease: 'power2.out'
       });
       gsap.to($navButtons, {
         opacity: 1,
         duration: 0.4,
-        ease: 'power2.out',
+          ease: 'power2.out',
         delay: 0.2
       });
     });
@@ -2795,7 +2608,7 @@ function deactivateOverviewMode() {
 
 /**
  * CENTRALIZED HOMEPAGE ANIMATION FUNCTION
- * Handles hero wrap height animation (SVG animations disabled)
+ * Handles hero wrap height animation
  * Called from: direct page load, Barba transitions, and index page view
  */
 function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
@@ -2830,7 +2643,7 @@ function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
           height: '70vh',
           duration: 0.8,
           ease: "power2.out",
-          delay: 0.8, // Reduced from 1.8s since no SVG animation
+          delay: 0.8,
           onStart: () => console.log(`✨ Hero wrap animating to 70vh height (${context})`),
           onComplete: () => {
             console.log(`✅ Hero wrap animation complete (${context})`);
@@ -2847,130 +2660,6 @@ function animateHomepageElements(context = 'unknown', overrideScrollY = null) {
     console.log(`ℹ️ No .hero_wrap found (${context})`);
   }
 }
-
-/**
- * SCROLL-TRIGGERED SVG ANIMATIONS
- * Fade out SVGs on scroll down (reverse stagger)
- * Fade in SVGs on scroll up (normal stagger)
- * 
- * COMMENTED OUT - Intro animation disabled
- */
-/*
-let lastScrollY = 0;
-let svgsVisible = true;
-let svgScrollHandler = null; // Store reference for cleanup
-let svgScrollInitialized = false; // Prevent multiple initialization
-let scrollTimeout = null; // For detecting when scrolling stops
-
-function initializeSVGScrollAnimations() {
-  // CRITICAL: Don't initialize if already running
-  if (svgScrollInitialized) {
-    console.log('⚠️ SVG scroll animations already initialized - skipping');
-    return;
-  }
-  
-  console.log('📜 Initializing SVG scroll animations...');
-  
-  const svgElements = document.querySelectorAll('.studio_svg, .penzlien_svg');
-  
-  if (svgElements.length === 0) {
-    console.log('ℹ️ No SVG elements found for scroll animations');
-    return;
-  }
-  
-  svgScrollHandler = function handleSVGScroll() {
-    const currentScrollY = window.scrollY;
-    const scrollDirection = currentScrollY > lastScrollY ? 'down' : 'up';
-    const isAtTop = currentScrollY <= 50;
-    
-    // Clear existing timeout
-    if (scrollTimeout) {
-      clearTimeout(scrollTimeout);
-    }
-    
-    // Handle immediate scroll actions
-    if (currentScrollY > 50) { // Past initial position
-      
-      if (scrollDirection === 'down' && svgsVisible) {
-        // SCROLL DOWN: Fade out with reverse stagger
-        console.log('🔽 Scrolling down - fading out SVGs (reverse stagger)');
-        gsap.to(['.penzlien_svg', '.studio_svg'], { // REVERSE ORDER
-          opacity: 0,
-          duration: 0.4,
-          stagger: 0.1, // Penzlien first, then studio
-          ease: "power2.out"
-        });
-        svgsVisible = false;
-        
-      } else if (scrollDirection === 'up' && !svgsVisible) {
-        // SCROLL UP: Fade in with normal stagger (temporarily)
-        console.log('🔼 Scrolling up - fading in SVGs temporarily (normal stagger)');
-        gsap.to(['.studio_svg', '.penzlien_svg'], { // NORMAL ORDER
-          opacity: 1,
-          y: 0,
-          duration: 0.4,
-          stagger: 0.1, // Studio first, then penzlien
-          ease: "power2.out"
-        });
-        svgsVisible = true;
-      }
-      
-      // Set timeout to fade out when scrolling stops (unless at top)
-      scrollTimeout = setTimeout(() => {
-        if (window.scrollY > 50 && svgsVisible) {
-          console.log('⏸️ Scrolling stopped (not at top) - fading out SVGs');
-          gsap.to(['.penzlien_svg', '.studio_svg'], {
-            opacity: 0,
-            duration: 0.4,
-            stagger: 0.1,
-            ease: "power2.out"
-          });
-          svgsVisible = false;
-        }
-      }, 150); // 150ms delay after scrolling stops
-      
-    } else if (isAtTop && !svgsVisible) {
-      // At top - ensure SVGs are visible and stay visible
-      console.log('🔝 At top of page - showing SVGs permanently');
-      gsap.to(['.studio_svg', '.penzlien_svg'], {
-        opacity: 1,
-        y: 0,
-        duration: 0.4,
-        stagger: 0.1,
-        ease: "power2.out"
-      });
-      svgsVisible = true;
-    }
-    
-    lastScrollY = currentScrollY;
-  }; // End of svgScrollHandler function
-  
-  // Add scroll listener
-  window.addEventListener('scroll', svgScrollHandler, { passive: true });
-  svgScrollInitialized = true; // Mark as initialized
-  console.log('✅ SVG scroll animations initialized');
-}
-*/
-
-/*
-function destroySVGScrollAnimations() {
-  console.log('🧹 Cleaning up SVG scroll animations...');
-  if (svgScrollHandler) {
-    window.removeEventListener('scroll', svgScrollHandler);
-    svgScrollHandler = null;
-  }
-  // Clear any pending timeout
-  if (scrollTimeout) {
-    clearTimeout(scrollTimeout);
-    scrollTimeout = null;
-  }
-  // Reset all state
-  lastScrollY = 0;
-  svgsVisible = true;
-  svgScrollInitialized = false; // Allow re-initialization
-  console.log('✅ SVG scroll animations cleaned up');
-}
-*/
 
 // ================================================================================
 // 🎨 PAGE-SPECIFIC ANIMATIONS
@@ -3099,10 +2788,6 @@ function animateIndexPage() {
   
   // HOMEPAGE ANIMATIONS - Clean single function call
   animateHomepageElements('index page view');
-  
-  // CRITICAL: Also initialize scroll animations for SVGs
-  // COMMENTED OUT - SVG scroll animations disabled
-  // initializeSVGScrollAnimations();
 }
 
 /**

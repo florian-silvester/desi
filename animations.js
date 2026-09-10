@@ -27,6 +27,12 @@ console.log('🎨 Animations.js loaded');
       white-space: nowrap;
       text-align: center;
     }
+
+    /* Project title image count — the typeface's real superior figures */
+    .title_count {
+      font-feature-settings: "sups" 1;
+      margin-left: 0.1em;
+    }
   `;
   document.head.appendChild(blobStyle);
   console.log('🎨 Injected cursor label CSS');
@@ -553,6 +559,9 @@ $(document).ready(function() {
     
     // CRITICAL: Initialize cursor ONCE on page load
     initializeCustomCursor();
+
+    // Mobile project titles: append image count as superior figures
+    applyTitleCounts();
     
     // REMOVED DIRECT PAGE LOAD ANIMATION - Let Barba handle it to avoid double animation
     
@@ -820,7 +829,8 @@ function initializeThumbsProjectsListHoverAnimations() {
     
     // Show project name in cursor label
     if ($textWrap.length) {
-      const projectName = $textWrap.text().trim();
+      // Exclude the image-count superscript so the label is just the name
+      const projectName = $textWrap.clone().find('.title_count').remove().end().text().trim();
       updateCursorLabel(projectName);
     }
   });
@@ -845,6 +855,72 @@ function initializeThumbsProjectsListHoverAnimations() {
   
   console.log('✅ [THUMBS LIST HOVER] Thumbs projects list hover animations initialized');
 }
+
+// ================================================================================
+// 🔢 PROJECT TITLE IMAGE COUNT (MOBILE)
+// ================================================================================
+// Appends each project's image count to its title on tablet/mobile, rendered with the
+// typeface's own superior figures (OpenType `sups`) — no synthetic <sup>.
+// The count is read from a hidden `.image_count_source` inside each item — a
+// Lightbox (or Collection List) bound to the Views field, so it's always in
+// sync with the CMS with nothing to run on publish. A `data-image-count`
+// attribute is accepted as a fallback.
+
+// Tablet and below — wherever the title is shown under the image (matches the
+// breakpoint of the projects_text_wrap opacity override).
+const titleCountQuery = window.matchMedia('(max-width: 991px)');
+
+// Resolves the image count for one .projects_item, trying in order:
+// 1. hidden Collection List bound to Views (one .w-dyn-item per image)
+// 2. hidden Lightbox bound to Views (its .w-json lists every image)
+// 3. data-image-count attribute (CMS "Image Count" field)
+function getImageCount(item) {
+  const source = item.querySelector('.image_count_source');
+
+  if (source) {
+    const listItems = source.querySelectorAll('.w-dyn-item').length;
+    if (listItems) return listItems;
+
+    const json = source.querySelector('.w-json');
+    if (json) {
+      try {
+        return (JSON.parse(json.textContent).items || []).length;
+      } catch (e) {
+        console.warn('⚠️ [TITLE COUNT] Could not parse lightbox JSON', e);
+      }
+    }
+  }
+
+  return Number(item.getAttribute('data-image-count')) || 0;
+}
+
+function applyTitleCounts() {
+  const isMobile = titleCountQuery.matches;
+  const items = document.querySelectorAll('.thumbs_id_wrap .projects_item');
+
+  items.forEach((item) => {
+    const title = item.querySelector('.projects_title_mobile');
+    if (!title) return;
+
+    // Always remove first so re-runs (Barba, resize) never duplicate it
+    title.querySelector('.title_count')?.remove();
+
+    if (!isMobile) return; // Desktop shows the name in the cursor label instead
+
+    const count = getImageCount(item);
+    if (!count) return;
+
+    // A plain span, not <sup>: the browser's default <sup> styling would
+    // shrink and raise a glyph that the font already sizes and positions.
+    const sup = document.createElement('span');
+    sup.className = 'title_count';
+    sup.textContent = count;
+    title.appendChild(sup);
+  });
+}
+
+// Add/remove when crossing the mobile breakpoint (rotation, resize)
+titleCountQuery.addEventListener('change', applyTitleCounts);
 
 // ================================================================================
 // 🎯 PROJECTS ITEM HOVER ANIMATIONS (SLIDE IN)
@@ -1804,6 +1880,9 @@ function initializeBarba() {
 
           // Re-setup hover listeners for the new page's content
           setupCustomCursorListeners();
+
+          // Re-apply mobile title image counts for the new page's content
+          applyTitleCounts();
           
           // HOMEPAGE ANIMATIONS - Check if we're entering the homepage
           if (data.next.container.querySelector('.studio_svg') || data.next.container.querySelector('.penzlien_svg')) {

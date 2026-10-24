@@ -1582,13 +1582,28 @@ function initializeBarba() {
             // Set initial state - both texts hidden
             if (nameText) gsap.set(nameText, { opacity: 0 });
             if (headerText) gsap.set(headerText, { opacity: 0 });
-            
+
+            // Webflow hides .hero_header_wrap at ≤767px (the nav carries the name there),
+            // so on phones the intro ran invisibly: ~5s of blank page. Show it for the
+            // intro only, then hand display back to the stylesheet.
+            const heroHiddenByCss = getComputedStyle(heroHeaderWrap).display === 'none';
+            if (heroHiddenByCss) heroHeaderWrap.style.display = 'flex';
+
+            // Don't fade the type in before ABC Solar has arrived (font-display: swap would
+            // show Arial on a cold mobile load). Capped so a slow font never stalls the page.
+            const fontReady = Promise.race([
+              document.fonts ? document.fonts.load('500 1em Abcsolar') : Promise.resolve(),
+              new Promise(resolve => setTimeout(resolve, 1200))
+            ]).catch(() => {});
+
+            return fontReady.then(() => {
             // Create intro timeline
             const introTimeline = gsap.timeline({
               onComplete: () => {
                 console.log('✅ Full intro sequence complete');
                 heroAnimationPlayed = true;
-                
+                if (heroHiddenByCss) heroHeaderWrap.style.removeProperty('display');
+
                 // Stagger .projects_list children
                 if (projectsListItems.length > 0) {
                   console.log('🎬 Starting stagger animation for', projectsListItems.length, 'items');
@@ -1662,8 +1677,9 @@ function initializeBarba() {
               ease: "power2.out",
               delay: 0.3
             });
-            
+
             return introTimeline;
+            });
           } else {
             // Regular fade in for non-homepage or return visit
             
